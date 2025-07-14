@@ -1,11 +1,11 @@
 import { defineConfig, configDefaults } from 'vitest/config';
-import path from 'node:path';
+import tsconfigPaths from 'vite-tsconfig-paths'
 
 export default defineConfig({
+  plugins: [tsconfigPaths()],
   test: {
     alias: {
-      '@thaitype/schema-mongo': path.resolve(__dirname, './src/index.ts'),
-      '@thaitype/schema-mongo/adapters/zod': path.resolve(__dirname, './src/adapters/zod.ts'),
+      '@/': new URL('./src/', import.meta.url).pathname,
     },
     coverage: {
       exclude: [
