@@ -1,4 +1,4 @@
-import { test, expect } from 'bun:test';
+import { test, expect } from 'vitest';
 import { convertJsonSchemaToMongoSchema } from '../src/index';
 
 test('converts basic string type to bsonType', () => {

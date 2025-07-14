@@ -1,4 +1,4 @@
-import { test, expect } from 'bun:test';
+import { test, expect } from 'vitest';
 import { z } from 'zod';
 import { zodToCompatibleJsonSchema } from '../src/adapters/zod';
 import { convertJsonSchemaToMongoSchema } from '../src/index';

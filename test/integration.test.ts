@@ -1,4 +1,4 @@
-import { test, expect, beforeAll, afterAll } from 'bun:test';
+import { test, expect, beforeAll, afterAll } from 'vitest';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { MongoClient, Db, ObjectId } from 'mongodb';
 import { z } from 'zod';

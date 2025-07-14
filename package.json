@@ -1,37 +1,53 @@
 {
-  "name": "schema-mongo",
-  "version": "1.0.0",
+  "name": "@thaitype/schema-mongo",
+  "version": "0.0.0",
   "description": "Framework-agnostic library for converting validation schemas to MongoDB format with custom types",
-  "main": "src/index.ts",
-  "module": "src/index.ts",
-  "type": "module",
+  "main": "./dist/main.cjs",
+  "module": "./dist/main.js",
+  "types": "./dist/main.d.ts",
   "exports": {
-    ".": "./src/index.ts"
-  },
-  "keywords": ["mongodb", "validation", "schema", "zod", "json-schema", "adapters", "objectid", "custom-types"],
-  "author": "",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": ""
+    ".": {
+      "types": "./dist/main.d.ts",
+      "import": "./dist/main.js",
+      "default": "./dist/main.cjs"
+    }
   },
   "scripts": {
-    "test:coverage": "bun test --coverage",
-    "test": "bun test",
-    "check-types": "tsc --noEmit"
+    "start": "tsx src/main.ts",
+    "dev": "tsx watch src/main.ts",
+    "test:coverage": "vitest run --coverage",
+    "test": "vitest",
+    "test:ci": "vitest run",
+    "build": "tsup src/main.ts --dts --format esm,cjs",
+    "format": "prettier -w src",
+    "lint": "tsc --noEmit && eslint ./src && prettier -c src",
+    "lint:fix": "eslint --fix ./src && prettier -w src"
   },
   "devDependencies": {
-    "@types/bun": "latest",
-    "mongodb": "^6.17.0",
-    "mongodb-memory-server": "^10.1.4",
-    "zod": "^4.0.5"
+    "@eslint/js": "^9.23.0",
+    "@typescript-eslint/eslint-plugin": "^8.27.0",
+    "@vitest/coverage-v8": "^3.0.9",
+    "eslint": "^9.23.0",
+    "eslint-config-prettier": "^10.1.1",
+    "eslint-plugin-only-warn": "^1.1.0",
+    "prettier": "^3.5.3",
+    "tsup": "^8.4.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.27.0",
+    "vitest": "^3.0.9"
   },
-  "peerDependencies": {
-    "typescript": "^5"
-  },
+  "keywords": [],
+  "author": "Thada Wangthammang",
+  "license": "MIT",
   "files": [
-    "src/",
+    "dist",
     "README.md",
-    "CLAUDE.md"
-  ]
+    "package.json"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thaitype/minimal-typescript-node-esm-starter.git"
+  },
+  "homepage": "https://github.com/thaitype/minimal-typescript-node-esm-starter"
 }
