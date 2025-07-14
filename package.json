@@ -2,7 +2,7 @@
   "name": "@thaitype/schema-mongo",
   "version": "0.0.0",
   "type": "module",
-  "description": "Framework-agnostic library for converting validation schemas to MongoDB format with custom types",
+  "description": "Agnostic library for converting validation schemas to MongoDB format with custom types, supporting Zod.",
   "main": "./dist/main.cjs",
   "module": "./dist/main.js",
   "types": "./dist/main.d.ts",
