@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ObjectId } from 'mongodb';
 import { zodSchema } from '@thaitype/schema-mongo/adapters/zod';
 
 console.log('=== Zod Date Support Example ===');
@@ -76,10 +77,8 @@ console.log(JSON.stringify(logMongoSchema, null, 2));
 // Example 4: ObjectId + Date Custom Types
 console.log('\n=== ObjectId + Date Custom Types Example ===');
 
-// Define ObjectId validation function
-function zodObjectId(value: any): boolean {
-  return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
-}
+// Define ObjectId validation - cleaner pattern
+const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
 
 // Define custom strict date validator
 function zodStrictDate(value: any): boolean {
@@ -87,15 +86,15 @@ function zodStrictDate(value: any): boolean {
 }
 
 const UserProfileSchema = z.object({
-  _id: z.custom<string>(zodObjectId),           // ObjectId
-  userId: z.custom<string>(zodObjectId),        // Another ObjectId
+  _id: zodObjectId,           // ObjectId
+  userId: zodObjectId,        // Another ObjectId
   createdAt: z.date(),                          // Built-in date
   lastModified: z.custom<Date>(zodStrictDate),  // Custom date validation
   preferences: z.object({
     accountCreated: z.date(),
     lastLoginAt: z.date().optional()
   }),
-  teamIds: z.array(z.custom<string>(zodObjectId)).optional() // Array of ObjectIds
+  teamIds: z.array(zodObjectId).optional() // Array of ObjectIds
 });
 
 // Convert with both ObjectId and custom date types

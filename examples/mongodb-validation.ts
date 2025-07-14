@@ -1,6 +1,5 @@
 import { MongoClient, ObjectId } from 'mongodb';
 import { z } from 'zod';
-import { convertJsonSchemaToMongoSchema } from '@thaitype/schema-mongo';
 import { zodSchema } from '@thaitype/schema-mongo/adapters/zod';
 
 /**
@@ -12,9 +11,9 @@ import { zodSchema } from '@thaitype/schema-mongo/adapters/zod';
 
 async function setupMongoValidation() {
   // Connect to MongoDB (adjust connection string as needed)
-  const client = new MongoClient('mongodb://localhost:27017');
+  const client = new MongoClient('mongodb://root:example@localhost:27017');
   await client.connect();
-  
+
   const db = client.db('schema-mongo-example');
 
   // Example 1: User collection with Zod schema
@@ -37,7 +36,7 @@ async function setupMongoValidation() {
       validationAction: 'error',
       validationLevel: 'strict'
     });
-    
+
     console.log('✅ Users collection created with validation');
   } catch (error) {
     console.log('Collection may already exist, continuing...');
@@ -57,7 +56,7 @@ async function setupMongoValidation() {
     });
     console.log('✅ Valid user document inserted successfully');
   } catch (error) {
-    console.error('❌ Error inserting valid user:', (error as Error).message);
+    console.error('❌ Error inserting valid user:', (JSON.stringify(error, null, 2)));
   }
 
   // Test invalid document (missing required field)
@@ -73,146 +72,10 @@ async function setupMongoValidation() {
     console.log('✅ Invalid user document correctly rejected:', (error as Error).message);
   }
 
-  // Example 2: Product collection with manual JSON Schema
-  const productSchema = {
-    type: 'object',
-    required: ['name', 'price', 'category'],
-    properties: {
-      _id: { type: 'string' },
-      name: { type: 'string' },
-      price: { type: 'number' },
-      category: {
-        type: 'object',
-        required: ['id', 'name'],
-        properties: {
-          id: { type: 'string' },
-          name: { type: 'string' }
-        }
-      },
-      tags: {
-        type: 'array',
-        items: { type: 'string' }
-      },
-      inStock: { type: 'boolean' }
-    }
-  };
-
-  const productMongoSchema = convertJsonSchemaToMongoSchema(productSchema);
-
-  try {
-    await db.createCollection('products', {
-      validator: { $jsonSchema: productMongoSchema },
-      validationAction: 'error'
-    });
-    console.log('✅ Products collection created with validation');
-  } catch (error) {
-    console.log('Collection may already exist, continuing...');
-  }
-
-  const productsCollection = db.collection('products');
-
-  // Test valid product
-  try {
-    await productsCollection.insertOne({
-      _id: new ObjectId(),
-      name: 'Laptop',
-      price: 999.99,
-      category: {
-        id: 'electronics',
-        name: 'Electronics'
-      },
-      tags: ['computer', 'portable'],
-      inStock: true
-    });
-    console.log('✅ Valid product document inserted successfully');
-  } catch (error) {
-    console.error('❌ Error inserting valid product:', (error as Error).message);
-  }
-
-  // Test invalid product (missing required field)
-  try {
-    await productsCollection.insertOne({
-      _id: new ObjectId(),
-      name: 'Invalid Item',
-      // missing required price and category
-      inStock: true
-    });
-    console.log('❌ Invalid product was incorrectly accepted');
-  } catch (error) {
-    console.log('✅ Invalid product document correctly rejected:', (error as Error).message);
-  }
-
-  // Example 3: ObjectId Validation
-  console.log('\n=== ObjectId and Date Validation Example ===');
-
-  // Define ObjectId validation function
-  function zodObjectId(value: any): boolean {
-    return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
-  }
-
-  const TaskSchema = z.object({
-    _id: z.custom<string>(zodObjectId),
-    title: z.string(),
-    assigneeId: z.custom<string>(zodObjectId),
-    createdAt: z.date(),
-    dueDate: z.date().optional(),
-    tags: z.array(z.custom<string>(zodObjectId)).optional(),
-    status: z.enum(['todo', 'in_progress', 'done'])
-  });
-
-  // Using Zod adapter with custom types - super clean!
-  const taskMongoSchema = zodSchema(TaskSchema, {
-    customTypes: { zodObjectId: 'objectId' }
-  }).toMongoSchema();
-
-  try {
-    await db.createCollection('tasks', {
-      validator: { $jsonSchema: taskMongoSchema },
-      validationAction: 'error'
-    });
-    console.log('✅ Tasks collection created with ObjectId validation');
-  } catch (error) {
-    console.log('Collection may already exist, continuing...');
-  }
-
-  const tasksCollection = db.collection('tasks');
-
-  // Test with valid ObjectId (you'd use actual ObjectId objects in real code)
-  try {
-    await tasksCollection.insertOne({
-      _id: new ObjectId(),
-      title: 'Complete project',
-      assigneeId: new ObjectId(),
-      createdAt: new Date(),
-      dueDate: new Date('2025-12-31'),
-      tags: [new ObjectId()],
-      status: 'todo'
-    });
-    console.log('✅ Valid task with ObjectIds inserted successfully');
-  } catch (error) {
-    console.error('❌ Error inserting valid task:', (error as Error).message);
-  }
-
-  // Test with invalid ObjectId format
-  try {
-    await tasksCollection.insertOne({
-      _id: 'invalid-objectid-format',  // Invalid ObjectId (should stay as string for test)
-      title: 'Invalid task',
-      assigneeId: new ObjectId(),
-      createdAt: new Date(),
-      status: 'todo'
-    } as any);
-    console.log('❌ Invalid task was incorrectly accepted');
-  } catch (error) {
-    console.log('✅ Invalid ObjectId correctly rejected:', (error as Error).message);
-  }
-
   // Close connection
   await client.close();
   console.log('🔌 MongoDB connection closed');
 }
 
-// Example usage
-if (import.meta.main) {
-  setupMongoValidation().catch(console.error);
-}
+
+setupMongoValidation().catch(console.error);

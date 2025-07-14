@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ObjectId } from 'mongodb';
 import { zodSchema } from '@thaitype/schema-mongo/adapters/zod';
 
 console.log('=== Zod Integration Example ===');
@@ -90,19 +91,17 @@ console.log(JSON.stringify(eventMongoSchema, null, 2));
 // Example 4: ObjectId and Custom Types Example
 console.log('\n=== NEW: ObjectId and Custom Types Example ===');
 
-// Define ObjectId validation function
-function zodObjectId(value: any): boolean {
-  return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
-}
+// Define ObjectId validation - cleaner pattern
+const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
 
 const ProductSchema = z.object({
-  _id: z.custom<string>(zodObjectId),           // ObjectId
-  categoryId: z.custom<string>(zodObjectId),    // Another ObjectId
+  _id: zodObjectId,           // ObjectId
+  categoryId: zodObjectId,    // Another ObjectId
   name: z.string(),
   price: z.number(),
   createdAt: z.date(),                          // Built-in date
   tags: z.array(z.object({
-    tagId: z.custom<string>(zodObjectId),       // ObjectId in arrays
+    tagId: zodObjectId,       // ObjectId in arrays
     name: z.string()
   })).optional()
 });

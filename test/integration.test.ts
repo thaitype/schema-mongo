@@ -204,14 +204,14 @@ test('should validate Zod schema with complex composition', async () => {
 });
 
 test('full pipeline: Zod dates → MongoDB validation with actual Date objects', async () => {
-  // 1. Define ObjectId validator for proper MongoDB ObjectId type
-  function zodObjectId(value: any): boolean {
-    return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
-  }
+  // 1. Define ObjectId validator for proper MongoDB ObjectId type - cleaner pattern with named function
+  const zodObjectId = z.custom<ObjectId | string>(function zodObjectId(value) {
+    return ObjectId.isValid(value);
+  });
 
   // 2. Complex Zod schema with various date scenarios
   const EventSchema = z.object({
-    _id: z.custom<string>(zodObjectId),
+    _id: zodObjectId,
     title: z.string(),
     startDate: z.date(),           // Required date
     endDate: z.date().optional(),  // Optional date
@@ -348,10 +348,10 @@ test('full pipeline: Zod dates → MongoDB validation with actual Date objects',
 });
 
 test('full pipeline: ObjectId + Date custom types → MongoDB validation', async () => {
-  // 1. Define custom validators for MongoDB types
-  function zodObjectId(value: any): boolean {
-    return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
-  }
+  // 1. Define custom validators for MongoDB types - cleaner pattern with named function
+  const zodObjectId = z.custom<ObjectId | string>(function zodObjectId(value) {
+    return ObjectId.isValid(value);
+  });
 
   function zodStrictDate(value: any): boolean {
     return value instanceof Date && !isNaN(value.getTime());
@@ -359,10 +359,10 @@ test('full pipeline: ObjectId + Date custom types → MongoDB validation', async
 
   // 2. Create Zod schema with custom types
   const UserSchema = z.object({
-    _id: z.custom<string>(zodObjectId),           // ObjectId validation
-    parentId: z.custom<string>(zodObjectId).optional(), // Optional ObjectId
+    _id: zodObjectId,           // ObjectId validation
+    parentId: zodObjectId.optional(), // Optional ObjectId
     profile: z.object({
-      userId: z.custom<string>(zodObjectId),      // Nested ObjectId
+      userId: zodObjectId,      // Nested ObjectId
       createdAt: z.custom<Date>(zodStrictDate),   // Custom date validation
       updatedAt: z.date(),                        // Built-in date
       preferences: z.object({
@@ -371,11 +371,11 @@ test('full pipeline: ObjectId + Date custom types → MongoDB validation', async
       })
     }),
     tags: z.array(z.object({
-      tagId: z.custom<string>(zodObjectId),       // Array with ObjectId
+      tagId: zodObjectId,       // Array with ObjectId
       assignedAt: z.date()                        // Array with date
     })).optional(),
     metadata: z.object({
-      createdBy: z.custom<string>(zodObjectId),
+      createdBy: zodObjectId,
       timestamp: z.date()
     }).optional()
   });

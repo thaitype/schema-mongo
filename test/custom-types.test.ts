@@ -1,5 +1,6 @@
 import { test, expect } from 'vitest';
 import { z } from 'zod';
+import { ObjectId } from 'mongodb';
 import { zodToCompatibleJsonSchema } from '@thaitype/schema-mongo/adapters/zod';
 import { convertJsonSchemaToMongoSchema } from '@thaitype/schema-mongo';
 
@@ -11,10 +12,10 @@ const mockObjectIdValidation = (value: any): boolean => {
   return false;
 };
 
-// Create a custom ObjectId type with a recognizable name
-function zodObjectId(value: any): boolean {
-  return mockObjectIdValidation(value);
-}
+// Create a custom ObjectId type with a recognizable name - cleaner pattern with named function
+const zodObjectId = z.custom<ObjectId | string>(function zodObjectId(value) {
+  return ObjectId.isValid(value);
+});
 
 // Create a custom date type with a recognizable name  
 function zodStrictDate(value: any): boolean {
@@ -22,7 +23,7 @@ function zodStrictDate(value: any): boolean {
 }
 
 test('supports custom ObjectId type with configuration', () => {
-  const zodObjectIdType = z.custom<string>(zodObjectId);
+  const zodObjectIdType = zodObjectId;
   
   const schema = z.object({
     _id: zodObjectIdType,
@@ -68,7 +69,7 @@ test('supports custom date type with configuration', () => {
 });
 
 test('supports multiple custom types in same schema', () => {
-  const zodObjectIdType = z.custom<string>(zodObjectId);
+  const zodObjectIdType = zodObjectId;
   const zodStrictDateType = z.custom<Date>(zodStrictDate);
   
   const schema = z.object({
@@ -100,7 +101,7 @@ test('supports multiple custom types in same schema', () => {
 });
 
 test('full pipeline: custom types → MongoDB schema', () => {
-  const zodObjectIdType = z.custom<string>(zodObjectId);
+  const zodObjectIdType = zodObjectId;
   const zodStrictDateType = z.custom<Date>(zodStrictDate);
   
   const schema = z.object({
@@ -153,7 +154,7 @@ test('works without custom types configuration (backward compatibility)', () => 
 });
 
 test('ignores custom types not in configuration', () => {
-  const zodObjectIdType = z.custom<string>(zodObjectId);
+  const zodObjectIdType = zodObjectId;
   const zodUnknownType = z.custom<string>((value) => typeof value === 'string');
   
   const schema = z.object({
@@ -172,7 +173,7 @@ test('ignores custom types not in configuration', () => {
 });
 
 test('supports nested objects with custom types', () => {
-  const zodObjectIdType = z.custom<string>(zodObjectId);
+  const zodObjectIdType = zodObjectId;
   
   const schema = z.object({
     user: z.object({
@@ -193,7 +194,7 @@ test('supports nested objects with custom types', () => {
 });
 
 test('supports arrays with custom types', () => {
-  const zodObjectIdType = z.custom<string>(zodObjectId);
+  const zodObjectIdType = zodObjectId;
   
   const schema = z.object({
     items: z.array(z.object({

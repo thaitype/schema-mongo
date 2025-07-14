@@ -1,11 +1,12 @@
 import { test, expect } from 'vitest';
 import { z } from 'zod';
+import { ObjectId } from 'mongodb';
 import { zodSchema } from '@thaitype/schema-mongo/adapters/zod';
 
-// Custom ObjectId validator function
-function zodObjectId(value: any): boolean {
-  return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
-}
+// Custom ObjectId validator - cleaner pattern with named function
+const zodObjectId = z.custom<ObjectId | string>(function zodObjectId(value) {
+  return ObjectId.isValid(value);
+});
 
 test('zodSchema().toJsonSchema() - basic functionality', () => {
   const UserSchema = z.object({
@@ -49,7 +50,7 @@ test('zodSchema().toMongoSchema() - basic functionality', () => {
 
 test('zodSchema().toJsonSchema() - with custom types', () => {
   const UserSchema = z.object({
-    _id: z.custom<string>(zodObjectId),
+    _id: zodObjectId,
     name: z.string(),
     createdAt: z.date()
   });
@@ -70,7 +71,7 @@ test('zodSchema().toJsonSchema() - with custom types', () => {
 
 test('zodSchema().toMongoSchema() - with custom types', () => {
   const UserSchema = z.object({
-    _id: z.custom<string>(zodObjectId),
+    _id: zodObjectId,
     name: z.string(),
     createdAt: z.date()
   });
@@ -86,7 +87,7 @@ test('zodSchema().toMongoSchema() - with custom types', () => {
 
 test('zodSchema().toJsonSchema() - complex nested schema', () => {
   const UserSchema = z.object({
-    _id: z.custom<string>(zodObjectId),
+    _id: zodObjectId,
     profile: z.object({
       name: z.string(),
       age: z.number().int().min(0).max(120)
@@ -111,7 +112,7 @@ test('zodSchema().toJsonSchema() - complex nested schema', () => {
 
 test('zodSchema().toMongoSchema() - complex nested schema', () => {
   const UserSchema = z.object({
-    _id: z.custom<string>(zodObjectId),
+    _id: zodObjectId,
     profile: z.object({
       name: z.string(),
       contacts: z.array(z.object({
@@ -173,7 +174,7 @@ test('zodSchema() - multiple custom types', () => {
   }
 
   const ProductSchema = z.object({
-    _id: z.custom<string>(zodObjectId),
+    _id: zodObjectId,
     price: z.custom<string>(zodDecimal),
     thumbnail: z.custom<Uint8Array>(zodBinary),
     createdAt: z.date()

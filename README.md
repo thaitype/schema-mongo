@@ -285,7 +285,8 @@ The library is designed for extensibility. To add support for new validators:
 MIT License © 2025
 Created by [@thaitype](https://github.com/thaitype)
 
-
+## Alternatives
+- https://github.com/marcesengel/zod-to-mongodb-schema
 
 ## Related
 
