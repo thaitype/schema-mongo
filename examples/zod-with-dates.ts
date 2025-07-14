@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ObjectId } from 'mongodb';
 import { zodSchema } from '@thaitype/schema-mongo/adapters/zod';
+import { CustomTypeRegistry } from '@thaitype/schema-mongo';
 
 console.log('=== Zod Date Support Example ===');
 
@@ -80,6 +81,13 @@ console.log('\n=== ObjectId + Date Custom Types Example ===');
 // Define ObjectId validation - cleaner pattern
 const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
 
+// Create type-safe custom type registry
+const customTypes = new CustomTypeRegistry()
+  .add('objectId', {
+    validate: zodObjectId,
+    bsonType: 'objectId'
+  });
+
 // Define custom strict date validator
 function zodStrictDate(value: any): boolean {
   return value instanceof Date && !isNaN(value.getTime());
@@ -89,7 +97,7 @@ const UserProfileSchema = z.object({
   _id: zodObjectId,           // ObjectId
   userId: zodObjectId,        // Another ObjectId
   createdAt: z.date(),                          // Built-in date
-  lastModified: z.custom<Date>(zodStrictDate),  // Custom date validation
+  lastModified: zodStrictDateType,  // Custom date validation
   preferences: z.object({
     accountCreated: z.date(),
     lastLoginAt: z.date().optional()
@@ -97,12 +105,15 @@ const UserProfileSchema = z.object({
   teamIds: z.array(zodObjectId).optional() // Array of ObjectIds
 });
 
-// Convert with both ObjectId and custom date types
+// Convert with both ObjectId and custom date types - type-safe!
+const zodStrictDateType = z.custom<Date>(zodStrictDate);
+customTypes.add('strictDate', {
+  validate: zodStrictDateType,
+  bsonType: 'date'
+});
+
 const userProfileMongoSchema = zodSchema(UserProfileSchema, {
-  customTypes: { 
-    zodObjectId: 'objectId',
-    zodStrictDate: 'date'
-  }
+  customTypes
 }).toMongoSchema();
 
 console.log('Schema with ObjectId and mixed Date types:');

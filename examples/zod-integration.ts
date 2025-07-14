@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ObjectId } from 'mongodb';
 import { zodSchema } from '@thaitype/schema-mongo/adapters/zod';
+import { CustomTypeRegistry } from '@thaitype/schema-mongo';
 
 console.log('=== Zod Integration Example ===');
 
@@ -94,6 +95,13 @@ console.log('\n=== NEW: ObjectId and Custom Types Example ===');
 // Define ObjectId validation - cleaner pattern
 const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
 
+// Create type-safe custom type registry
+const customTypes = new CustomTypeRegistry()
+  .add('objectId', {
+    validate: zodObjectId,
+    bsonType: 'objectId'
+  });
+
 const ProductSchema = z.object({
   _id: zodObjectId,           // ObjectId
   categoryId: zodObjectId,    // Another ObjectId
@@ -106,9 +114,9 @@ const ProductSchema = z.object({
   })).optional()
 });
 
-// Convert with custom types configuration
+// Convert with custom types registry - type-safe!
 const productMongoSchema = zodSchema(ProductSchema, {
-  customTypes: { zodObjectId: 'objectId' }
+  customTypes
 }).toMongoSchema();
 
 console.log('Schema with ObjectId and Date types:');

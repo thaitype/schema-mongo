@@ -2,7 +2,7 @@ import { test, expect, beforeAll, afterAll } from 'vitest';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { MongoClient, Db, ObjectId } from 'mongodb';
 import { z } from 'zod';
-import { convertJsonSchemaToMongoSchema } from '@thaitype/schema-mongo';
+import { convertJsonSchemaToMongoSchema, CustomTypeRegistry } from '@thaitype/schema-mongo';
 import { zodToCompatibleJsonSchema } from '@thaitype/schema-mongo/adapters/zod';
 
 let mongod: MongoMemoryServer;
@@ -204,10 +204,15 @@ test('should validate Zod schema with complex composition', async () => {
 });
 
 test('full pipeline: Zod dates → MongoDB validation with actual Date objects', async () => {
-  // 1. Define ObjectId validator for proper MongoDB ObjectId type - cleaner pattern with named function
-  const zodObjectId = z.custom<ObjectId | string>(function zodObjectId(value) {
-    return ObjectId.isValid(value);
-  });
+  // 1. Define ObjectId validator for proper MongoDB ObjectId type - cleaner pattern
+  const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
+  
+  // 2. Create type-safe custom type registry
+  const customTypes = new CustomTypeRegistry()
+    .add('objectId', {
+      validate: zodObjectId,
+      bsonType: 'objectId'
+    });
 
   // 2. Complex Zod schema with various date scenarios
   const EventSchema = z.object({
@@ -232,7 +237,7 @@ test('full pipeline: Zod dates → MongoDB validation with actual Date objects',
 
   // 3. Full conversion pipeline with custom types
   const jsonSchema = zodToCompatibleJsonSchema(EventSchema, {
-    customTypes: { zodObjectId: 'objectId' }
+    customTypes
   });
   const mongoSchema = convertJsonSchemaToMongoSchema(jsonSchema);
 
@@ -348,14 +353,14 @@ test('full pipeline: Zod dates → MongoDB validation with actual Date objects',
 });
 
 test('full pipeline: ObjectId + Date custom types → MongoDB validation', async () => {
-  // 1. Define custom validators for MongoDB types - cleaner pattern with named function
-  const zodObjectId = z.custom<ObjectId | string>(function zodObjectId(value) {
-    return ObjectId.isValid(value);
-  });
+  // 1. Define custom validators for MongoDB types - cleaner pattern
+  const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
 
   function zodStrictDate(value: any): boolean {
     return value instanceof Date && !isNaN(value.getTime());
   }
+  
+  const zodStrictDateType = z.custom<Date>(zodStrictDate);
 
   // 2. Create Zod schema with custom types
   const UserSchema = z.object({
@@ -363,11 +368,11 @@ test('full pipeline: ObjectId + Date custom types → MongoDB validation', async
     parentId: zodObjectId.optional(), // Optional ObjectId
     profile: z.object({
       userId: zodObjectId,      // Nested ObjectId
-      createdAt: z.custom<Date>(zodStrictDate),   // Custom date validation
+      createdAt: zodStrictDateType,   // Custom date validation
       updatedAt: z.date(),                        // Built-in date
       preferences: z.object({
         lastLoginAt: z.date().optional(),         // Optional built-in date
-        accountCreated: z.custom<Date>(zodStrictDate), // Nested custom date
+        accountCreated: zodStrictDateType, // Nested custom date
       })
     }),
     tags: z.array(z.object({
@@ -380,12 +385,19 @@ test('full pipeline: ObjectId + Date custom types → MongoDB validation', async
     }).optional()
   });
 
-  // 3. Convert using custom types configuration
+  // 3. Convert using custom types registry
+  const customTypes = new CustomTypeRegistry()
+    .add('objectId', {
+      validate: zodObjectId,
+      bsonType: 'objectId'
+    })
+    .add('strictDate', {
+      validate: zodStrictDateType,
+      bsonType: 'date'
+    });
+  
   const jsonSchema = zodToCompatibleJsonSchema(UserSchema, {
-    customTypes: {
-      zodObjectId: 'objectId',
-      zodStrictDate: 'date'
-    }
+    customTypes
   });
   
   const mongoSchema = convertJsonSchemaToMongoSchema(jsonSchema);
