@@ -8,6 +8,7 @@ The Zod adapter (`zodSchema`) provides seamless conversion from Zod schemas to M
 
 ## Quick Start
 
+### Pattern 1: Direct Schema Usage
 ```typescript
 import { z } from 'zod';
 import { ObjectId } from 'mongodb';
@@ -24,9 +25,41 @@ const mongoTypes = new MongoTypeRegistry()
     bsonType: 'objectId'
   });
 
-// Create Zod schema
+// Create Zod schema with direct reference
 const UserSchema = z.object({
-  _id: zodObjectId,
+  _id: zodObjectId,  // Direct schema reference
+  name: z.string(),
+  email: z.string(),
+  createdAt: z.date(),
+  isActive: z.boolean()
+});
+
+// Convert to MongoDB schema
+const mongoSchema = zodSchema(UserSchema, { mongoTypes }).toMongoSchema();
+
+// Use with MongoDB
+await db.createCollection('users', {
+  validator: { $jsonSchema: mongoSchema }
+});
+```
+
+### Pattern 2: Registry-First Usage (Recommended)
+```typescript
+import { z } from 'zod';
+import { ObjectId } from 'mongodb';
+import { MongoTypeRegistry } from 'schema-mongo';
+import { zodSchema } from 'schema-mongo/adapters/zod';
+
+// Create type-safe MongoTypeRegistry with inline schema definition
+const mongoTypes = new MongoTypeRegistry()
+  .register('objectId', {
+    schema: z.custom<ObjectId | string>(value => ObjectId.isValid(value)),
+    bsonType: 'objectId'
+  });
+
+// Create Zod schema using registry .get() method
+const UserSchema = z.object({
+  _id: mongoTypes.get('objectId'),  // Get from registry (type-safe)
   name: z.string(),
   email: z.string(),
   createdAt: z.date(),
@@ -124,6 +157,7 @@ const mongoSchema = zodSchema(schema, { mongoTypes }).toMongoSchema();
 
 ### Multiple Custom Types
 
+#### Pattern 1: Direct Schema Approach
 ```typescript
 // Define custom validators with clean syntax
 const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
@@ -146,9 +180,35 @@ const mongoTypes = new MongoTypeRegistry()
   });
 
 const ProductSchema = z.object({
-  _id: zodObjectId,
-  price: zodDecimal,
-  thumbnail: zodBinary,
+  _id: zodObjectId,      // Direct reference
+  price: zodDecimal,     // Direct reference
+  thumbnail: zodBinary,  // Direct reference
+  createdAt: z.date()
+});
+```
+
+#### Pattern 2: Registry-First Approach (Recommended)
+```typescript
+// Define all types in registry with inline schemas
+const mongoTypes = new MongoTypeRegistry()
+  .register('objectId', {
+    schema: z.custom<ObjectId | string>(value => ObjectId.isValid(value)),
+    bsonType: 'objectId'
+  })
+  .register('decimal', {
+    schema: z.custom<string>(value => /^\d+\.\d+$/.test(value)),
+    bsonType: 'decimal'
+  })
+  .register('binData', {
+    schema: z.custom<Uint8Array>(value => value instanceof Uint8Array),
+    bsonType: 'binData'
+  });
+
+// Use registry .get() for type-safe access
+const ProductSchema = z.object({
+  _id: mongoTypes.get('objectId'),      // Type-safe registry access
+  price: mongoTypes.get('decimal'),     // Type-safe registry access
+  thumbnail: mongoTypes.get('binData'), // Type-safe registry access
   createdAt: z.date()
 });
 
@@ -238,22 +298,45 @@ const mongoTypes = new MongoTypeRegistry()
 const options: ZodToMongoOptions = { mongoTypes };
 ```
 
-### Registry Benefits
+### Registry Benefits & Usage Patterns
 
 The MongoTypeRegistry approach provides:
 
 ✅ **Type Safety**: Full TypeScript inference with StandardSchemaV1 compliance  
+✅ **Centralized Management**: All types defined in one place with `.get()` access  
 ✅ **Clean Syntax**: Arrow functions work perfectly - no function naming required  
 ✅ **Object Identity**: Uses `===` comparison instead of fragile function name matching  
 ✅ **Method Chaining**: Fluent API with `.register().register()` pattern  
-✅ **Standards Compliant**: Built on StandardSchemaV1 for future compatibility  
+✅ **Standards Compliant**: Built on StandardSchemaV1 for future compatibility
+
+#### Usage Pattern Comparison
 
 ```typescript
-// ✅ Modern approach - Clean and type-safe
+// Pattern 1: Direct Schema (good for simple cases)
 const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
 const mongoTypes = new MongoTypeRegistry()
   .register('objectId', { schema: zodObjectId, bsonType: 'objectId' });
+
+const schema1 = z.object({
+  _id: zodObjectId  // Direct reference
+});
+
+// Pattern 2: Registry-First (recommended for complex schemas)
+const mongoTypes2 = new MongoTypeRegistry()
+  .register('objectId', { 
+    schema: z.custom<ObjectId | string>(value => ObjectId.isValid(value)), 
+    bsonType: 'objectId' 
+  });
+
+const schema2 = z.object({
+  _id: mongoTypes2.get('objectId')  // Type-safe registry access
+});
 ```
+
+#### When to Use Each Pattern
+
+- **Pattern 1 (Direct)**: Simple schemas, one-off usage, explicit control
+- **Pattern 2 (Registry)**: Complex schemas, shared types, centralized management, maximum type safety
 
 ## Complete Example
 
@@ -395,9 +478,20 @@ const mongoTypes = new MongoTypeRegistry()
     bsonType: 'decimal'
   });
 
-// Use across schemas
-const userSchema = zodSchema(UserSchema, { mongoTypes: mongoTypes });
-const productSchema = zodSchema(ProductSchema, { mongoTypes: mongoTypes });
+// Use across schemas with both patterns
+const UserSchema = z.object({
+  _id: mongoTypes.get('objectId'),  // Registry-first approach
+  name: z.string()
+});
+
+const ProductSchema = z.object({
+  _id: mongoTypes.get('objectId'),    // Reuse same type
+  price: mongoTypes.get('decimal'),   // Type-safe access
+  name: z.string()
+});
+
+const userSchema = zodSchema(UserSchema, { mongoTypes });
+const productSchema = zodSchema(ProductSchema, { mongoTypes });
 ```
 
 ### 2. Test with Real MongoDB

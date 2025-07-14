@@ -82,15 +82,15 @@ const mongoSchema = zodSchema(zodSchema).toMongoSchema();
 
 ## Type Conversion
 
-| Zod Type | JSON Schema | MongoDB Schema |
-|----------|-------------|----------------|
-| `z.string()` | `{ type: "string" }` | `{ bsonType: "string" }` |
-| `z.number()` | `{ type: "number" }` | `{ bsonType: "double" }` |
-| `z.number().int()` | `{ type: "integer" }` | `{ bsonType: "int" }` |
-| `z.boolean()` | `{ type: "boolean" }` | `{ bsonType: "bool" }` |
-| `z.date()` | `{ type: "string", __mongoType: "date" }` | `{ bsonType: "date" }` |
-| `z.array(T)` | `{ type: "array", items: T }` | `{ bsonType: "array", items: T }` |
-| `z.object({})` | `{ type: "object", properties: {} }` | `{ bsonType: "object", properties: {} }` |
+| Zod Type           | JSON Schema                               | MongoDB Schema                           |
+| ------------------ | ----------------------------------------- | ---------------------------------------- |
+| `z.string()`       | `{ type: "string" }`                      | `{ bsonType: "string" }`                 |
+| `z.number()`       | `{ type: "number" }`                      | `{ bsonType: "double" }`                 |
+| `z.number().int()` | `{ type: "integer" }`                     | `{ bsonType: "int" }`                    |
+| `z.boolean()`      | `{ type: "boolean" }`                     | `{ bsonType: "bool" }`                   |
+| `z.date()`         | `{ type: "string", __mongoType: "date" }` | `{ bsonType: "date" }`                   |
+| `z.array(T)`       | `{ type: "array", items: T }`             | `{ bsonType: "array", items: T }`        |
+| `z.object({})`     | `{ type: "object", properties: {} }`      | `{ bsonType: "object", properties: {} }` |
 
 ## Custom Types
 
@@ -235,12 +235,15 @@ const AddressSchema = z.object({
 });
 
 // Define mongo types once
-const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
 const mongoTypes = new MongoTypeRegistry()
-  .register('objectId', { schema: zodObjectId, bsonType: 'objectId' });
+  .register('objectId', { 
+    schema: z.custom<ObjectId | string>(value => ObjectId.isValid(value)), 
+    bsonType: 'objectId' 
+  });
 
+// Registry-first approach (recommended for complex schemas)
 const UserSchema = z.object({
-  _id: zodObjectId,
+  _id: mongoTypes.get('objectId'),
   profile: z.object({
     name: z.string(),
     address: AddressSchema

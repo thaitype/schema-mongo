@@ -30,8 +30,10 @@ async function completeWorkflow() {
 
   // 3. Define Zod schema with mongo types
   console.log('3️⃣ Defining Zod schema with mongo types...');
+  
+  // Pattern A: Registry .get() approach (more type-safe, recommended)
   const UserSchema = z.object({
-    _id: mongoTypes.get('zodObjectId'),
+    _id: mongoTypes.get('zodObjectId'),  // Get from registry
     name: z.string().min(2),
     email: z.string().email(),
     age: z.number().int().min(0).max(120),
@@ -39,6 +41,21 @@ async function completeWorkflow() {
     isActive: z.boolean().default(true),
     tags: z.array(z.string()).optional()
   });
+
+  // Pattern B: Direct schema approach (alternative)
+  const UserSchemaAlt = z.object({
+    _id: zodObjectId,  // Direct schema reference
+    name: z.string().min(2),
+    email: z.string().email(),
+    age: z.number().int().min(0).max(120),
+    createdAt: z.date(),
+    isActive: z.boolean().default(true),
+    tags: z.array(z.string()).optional()
+  });
+
+  console.log('   • Pattern A: mongoTypes.get("zodObjectId") - Registry access');
+  console.log('   • Pattern B: zodObjectId - Direct schema reference');
+  console.log('   • Both patterns work identically with zodSchema()!');
 
   // 4. Convert to MongoDB schema
   console.log('4️⃣ Converting to MongoDB schema...');
@@ -109,6 +126,9 @@ async function completeWorkflow() {
   console.log('📋 Summary:');
   console.log('   • Custom ObjectId type declared with clean syntax');
   console.log('   • MongoTypeRegistry configured with type safety');
+  console.log('   • Two usage patterns demonstrated:');
+  console.log('     - Registry .get() approach (recommended)');
+  console.log('     - Direct schema reference approach');
   console.log('   • Zod schema converted to MongoDB validation schema');
   console.log('   • MongoDB collection created with validation');
   console.log('   • Valid data inserted successfully');
