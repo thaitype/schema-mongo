@@ -12,6 +12,6 @@ export * from './lib.js';
 export * as zod from './adapters/zod.js';
 
 /**
- * Export CustomTypeRegistry for type-safe custom type handling
+ * Export MongoTypeRegistry for type-safe custom type handling
  */
-export { CustomTypeRegistry, type CustomTypeInfo } from './registry/CustomTypeRegistry.js';
+export { MongoTypeRegistry, type MongoTypeInfo } from './registry/MongoTypeRegistry.js';

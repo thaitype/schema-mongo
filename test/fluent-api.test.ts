@@ -56,7 +56,7 @@ test('zodSchema().toJsonSchema() - with custom types', () => {
   });
 
   const result = zodSchema(UserSchema, {
-    customTypes: { zodObjectId: 'objectId' }
+    mongoTypes: { zodObjectId: 'objectId' }
   }).toJsonSchema();
 
   expect(result.properties!._id).toEqual({ 
@@ -77,7 +77,7 @@ test('zodSchema().toMongoSchema() - with custom types', () => {
   });
 
   const result = zodSchema(UserSchema, {
-    customTypes: { zodObjectId: 'objectId' }
+    mongoTypes: { zodObjectId: 'objectId' }
   }).toMongoSchema();
 
   expect(result.properties._id).toEqual({ bsonType: 'objectId' });
@@ -98,7 +98,7 @@ test('zodSchema().toJsonSchema() - complex nested schema', () => {
   });
 
   const result = zodSchema(UserSchema, {
-    customTypes: { zodObjectId: 'objectId' }
+    mongoTypes: { zodObjectId: 'objectId' }
   }).toJsonSchema();
 
   expect(result.type).toBe('object');
@@ -124,7 +124,7 @@ test('zodSchema().toMongoSchema() - complex nested schema', () => {
   });
 
   const result = zodSchema(UserSchema, {
-    customTypes: { zodObjectId: 'objectId' }
+    mongoTypes: { zodObjectId: 'objectId' }
   }).toMongoSchema();
 
   expect(result.bsonType).toBe('object');
@@ -181,7 +181,7 @@ test('zodSchema() - multiple custom types', () => {
   });
 
   const jsonResult = zodSchema(ProductSchema, {
-    customTypes: {
+    mongoTypes: {
       zodObjectId: 'objectId',
       zodDecimal: 'decimal',
       zodBinary: 'binData'
@@ -189,7 +189,7 @@ test('zodSchema() - multiple custom types', () => {
   }).toJsonSchema();
 
   const mongoResult = zodSchema(ProductSchema, {
-    customTypes: {
+    mongoTypes: {
       zodObjectId: 'objectId',
       zodDecimal: 'decimal',
       zodBinary: 'binData'

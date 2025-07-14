@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { convertJsonSchemaToMongoSchema } from '../lib.js';
-import { CustomTypeRegistry, type CustomTypeInfo } from '../registry/CustomTypeRegistry.js';
+import { MongoTypeRegistry } from '../registry/MongoTypeRegistry.js';
 
 /**
  * Extended JSON Schema that includes MongoDB-specific metadata
@@ -19,11 +19,11 @@ interface ExtendedJsonSchema {
 
 /**
  * Configuration options for custom MongoDB type mapping
- * Supports both legacy string-based configuration and new CustomTypeRegistry
+ * Supports both legacy string-based configuration and new MongoTypeRegistry
  */
 export interface ZodToMongoOptions {
-  /** @deprecated Use CustomTypeRegistry instead */
-  customTypes?: Record<string, 'date' | 'objectId' | (string & {})> | CustomTypeRegistry;
+  /** @deprecated Use MongoTypeRegistry instead */
+  mongoTypes?: Record<string, 'date' | 'objectId' | (string & {})> | MongoTypeRegistry;
 }
 
 /**
@@ -45,14 +45,14 @@ export interface ZodSchemaResult {
  * Converts a Zod schema to a JSON Schema with MongoDB-compatible extensions.
  * Handles unsupported Zod types like z.date() by converting them to strings
  * with special metadata that can be processed by convertJsonSchemaToMongoSchema.
- * Also supports custom MongoDB types through CustomTypeRegistry.
+ * Also supports custom MongoDB types through MongoTypeRegistry.
  *
  * @param zodSchema - The Zod schema to convert
  * @param options - Configuration options for custom type mapping
  * @returns Extended JSON Schema with MongoDB type hints
  */
 export function zodToCompatibleJsonSchema(zodSchema: z.ZodTypeAny, options?: ZodToMongoOptions): ExtendedJsonSchema {
-  return processZodType(zodSchema, options?.customTypes);
+  return processZodType(zodSchema, options?.mongoTypes);
 }
 
 /**
@@ -81,7 +81,7 @@ export function zodSchema(zodSchema: z.ZodTypeAny, options?: ZodToMongoOptions):
  */
 function processZodType(
   zodType: z.ZodTypeAny,
-  customTypes?: Record<string, string> | CustomTypeRegistry
+  mongoTypes?: Record<string, string> | MongoTypeRegistry
 ): ExtendedJsonSchema {
   const def = zodType._def || (zodType as any).def;
   const zodType_ = def?.type;
@@ -95,10 +95,10 @@ function processZodType(
   }
 
   // Handle ZodCustom - check for configured custom types
-  if (zodType_ === 'custom' && customTypes) {
-    const customTypeName = findCustomTypeName(zodType, customTypes);
+  if (zodType_ === 'custom' && mongoTypes) {
+    const customTypeName = findCustomTypeName(zodType, mongoTypes);
     if (customTypeName) {
-      const bsonType = getBsonType(customTypeName, customTypes);
+      const bsonType = getBsonType(customTypeName, mongoTypes);
       if (bsonType) {
         return {
           type: 'string',
@@ -158,7 +158,7 @@ function processZodType(
     const defAny = def as any;
     return {
       type: 'array',
-      items: processZodType(defAny.element, customTypes),
+      items: processZodType(defAny.element, mongoTypes),
     };
   }
 
@@ -170,7 +170,7 @@ function processZodType(
 
     const shape = defAny.shape || {};
     for (const [key, value] of Object.entries(shape)) {
-      properties[key] = processZodType(value as z.ZodTypeAny, customTypes);
+      properties[key] = processZodType(value as z.ZodTypeAny, mongoTypes);
 
       // Check if field is required (not optional)
       // In Zod v4, we need to check the def structure more carefully
@@ -223,7 +223,7 @@ function processZodType(
   if (zodType_ === 'union') {
     const defAny = def as any;
     return {
-      anyOf: (defAny.options || []).map((option: z.ZodTypeAny) => processZodType(option, customTypes)),
+      anyOf: (defAny.options || []).map((option: z.ZodTypeAny) => processZodType(option, mongoTypes)),
     };
   }
 
@@ -231,20 +231,20 @@ function processZodType(
   if (zodType_ === 'intersection') {
     const defAny = def as any;
     return {
-      allOf: [processZodType(defAny.left, customTypes), processZodType(defAny.right, customTypes)],
+      allOf: [processZodType(defAny.left, mongoTypes), processZodType(defAny.right, mongoTypes)],
     };
   }
 
   // Handle ZodOptional
   if (zodType_ === 'optional') {
     const defAny = def as any;
-    return processZodType(defAny.innerType, customTypes);
+    return processZodType(defAny.innerType, mongoTypes);
   }
 
   // Handle ZodDefault
   if (zodType_ === 'default') {
     const defAny = def as any;
-    const result = processZodType(defAny.innerType, customTypes);
+    const result = processZodType(defAny.innerType, mongoTypes);
     // Note: We don't include default values as they get stripped by MongoDB converter
     return result;
   }
@@ -252,7 +252,7 @@ function processZodType(
   // Handle ZodNullable
   if (zodType_ === 'nullable') {
     const defAny = def as any;
-    const innerSchema = processZodType(defAny.innerType, customTypes);
+    const innerSchema = processZodType(defAny.innerType, mongoTypes);
     return {
       anyOf: [innerSchema, { type: 'null' }],
     };
@@ -275,16 +275,16 @@ function processZodType(
 
 /**
  * Attempts to find a custom type name by matching the Zod custom validator
- * against the configured custom types using object identity (for CustomTypeRegistry)
+ * against the configured custom types using object identity (for MongoTypeRegistry)
  * or function name matching (for legacy Record<string, string>)
  */
 function findCustomTypeName(
   zodType: z.ZodTypeAny,
-  customTypes: Record<string, string> | CustomTypeRegistry
+  mongoTypes: Record<string, string> | MongoTypeRegistry
 ): string | undefined {
-  // New approach: CustomTypeRegistry using object identity
-  if (customTypes instanceof CustomTypeRegistry) {
-    return customTypes.findByValidator(zodType);
+  // New approach: MongoTypeRegistry using object identity
+  if (mongoTypes instanceof MongoTypeRegistry) {
+    return mongoTypes.findByValidator(zodType);
   }
 
   // Legacy approach: Record<string, string> using function name matching
@@ -294,21 +294,21 @@ function findCustomTypeName(
   // Strategy 1: Check the function name (Zod v4 stores the function in def.fn)
   if (defAny.fn && typeof defAny.fn === 'function') {
     const functionName = defAny.fn.name;
-    if (functionName && customTypes[functionName]) {
+    if (functionName && mongoTypes[functionName]) {
       return functionName;
     }
   }
 
   // Strategy 2: Check for a custom property on the zodType
   const customTypeName = (zodType as any).__customTypeName;
-  if (customTypeName && customTypes[customTypeName]) {
+  if (customTypeName && mongoTypes[customTypeName]) {
     return customTypeName;
   }
 
   // Strategy 3: Match function toString() - works for testing
   if (defAny.fn && typeof defAny.fn === 'function') {
     const funcString = defAny.fn.toString();
-    for (const typeName of Object.keys(customTypes)) {
+    for (const typeName of Object.keys(mongoTypes)) {
       if (funcString.includes(typeName)) {
         return typeName;
       }
@@ -318,7 +318,7 @@ function findCustomTypeName(
   // Strategy 4: Check legacy def.check for older Zod versions
   if (defAny.check && typeof defAny.check === 'function') {
     const functionName = defAny.check.name;
-    if (functionName && customTypes[functionName]) {
+    if (functionName && mongoTypes[functionName]) {
       return functionName;
     }
   }
@@ -329,11 +329,11 @@ function findCustomTypeName(
 /**
  * Get the BSON type for a custom type name
  */
-function getBsonType(typeName: string, customTypes: Record<string, string> | CustomTypeRegistry): string | undefined {
-  if (customTypes instanceof CustomTypeRegistry) {
-    const typeInfo = customTypes.get(typeName);
+function getBsonType(typeName: string, mongoTypes: Record<string, string> | MongoTypeRegistry): string | undefined {
+  if (mongoTypes instanceof MongoTypeRegistry) {
+    const typeInfo = mongoTypes.get(typeName);
     return typeInfo?.bsonType;
   }
 
-  return customTypes[typeName];
+  return mongoTypes[typeName];
 }

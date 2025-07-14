@@ -2,7 +2,7 @@ import { test, expect } from 'vitest';
 import { z } from 'zod';
 import { ObjectId } from 'mongodb';
 import { zodToCompatibleJsonSchema } from '@thaitype/schema-mongo/adapters/zod';
-import { convertJsonSchemaToMongoSchema, CustomTypeRegistry } from '@thaitype/schema-mongo';
+import { convertJsonSchemaToMongoSchema, MongoTypeRegistry } from '@thaitype/schema-mongo';
 
 // Custom ObjectId validator - clean pattern
 const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
@@ -13,8 +13,8 @@ function zodStrictDate(value: any): boolean {
 }
 const zodStrictDateType = z.custom<Date>(zodStrictDate);
 
-test('supports custom ObjectId type with CustomTypeRegistry', () => {
-  const customTypes = new CustomTypeRegistry()
+test('supports custom ObjectId type with MongoTypeRegistry', () => {
+  const mongoTypes = new MongoTypeRegistry()
     .add('objectId', {
       validate: zodObjectId,
       bsonType: 'objectId'
@@ -26,7 +26,7 @@ test('supports custom ObjectId type with CustomTypeRegistry', () => {
   });
   
   const result = zodToCompatibleJsonSchema(schema, {
-    customTypes
+    mongoTypes
   });
   
   expect(result).toEqual({
@@ -39,8 +39,8 @@ test('supports custom ObjectId type with CustomTypeRegistry', () => {
   });
 });
 
-test('supports custom date type with CustomTypeRegistry', () => {
-  const customTypes = new CustomTypeRegistry()
+test('supports custom date type with MongoTypeRegistry', () => {
+  const mongoTypes = new MongoTypeRegistry()
     .add('strictDate', {
       validate: zodStrictDateType,
       bsonType: 'date'
@@ -53,7 +53,7 @@ test('supports custom date type with CustomTypeRegistry', () => {
   });
   
   const result = zodToCompatibleJsonSchema(schema, {
-    customTypes
+    mongoTypes
   });
   
   expect(result).toEqual({
@@ -68,7 +68,7 @@ test('supports custom date type with CustomTypeRegistry', () => {
 });
 
 test('supports multiple custom types in same registry', () => {
-  const customTypes = new CustomTypeRegistry()
+  const mongoTypes = new MongoTypeRegistry()
     .add('objectId', {
       validate: zodObjectId,
       bsonType: 'objectId'
@@ -87,7 +87,7 @@ test('supports multiple custom types in same registry', () => {
   });
   
   const result = zodToCompatibleJsonSchema(schema, {
-    customTypes
+    mongoTypes
   });
   
   expect(result).toEqual({
@@ -103,8 +103,8 @@ test('supports multiple custom types in same registry', () => {
   });
 });
 
-test('full pipeline: CustomTypeRegistry → MongoDB schema', () => {
-  const customTypes = new CustomTypeRegistry()
+test('full pipeline: MongoTypeRegistry → MongoDB schema', () => {
+  const mongoTypes = new MongoTypeRegistry()
     .add('objectId', {
       validate: zodObjectId,
       bsonType: 'objectId'
@@ -122,7 +122,7 @@ test('full pipeline: CustomTypeRegistry → MongoDB schema', () => {
   });
   
   const jsonSchema = zodToCompatibleJsonSchema(schema, {
-    customTypes
+    mongoTypes
   });
   
   const mongoSchema = convertJsonSchemaToMongoSchema(jsonSchema);
@@ -161,7 +161,7 @@ test('works without custom types configuration (backward compatibility)', () => 
 });
 
 test('supports nested objects with custom types', () => {
-  const customTypes = new CustomTypeRegistry()
+  const mongoTypes = new MongoTypeRegistry()
     .add('objectId', {
       validate: zodObjectId,
       bsonType: 'objectId'
@@ -178,7 +178,7 @@ test('supports nested objects with custom types', () => {
   });
   
   const result = zodToCompatibleJsonSchema(schema, {
-    customTypes
+    mongoTypes
   });
   
   expect(result.properties!.user.properties!._id).toEqual({ type: 'string', __mongoType: 'objectId' });
@@ -186,7 +186,7 @@ test('supports nested objects with custom types', () => {
 });
 
 test('supports arrays with custom types', () => {
-  const customTypes = new CustomTypeRegistry()
+  const mongoTypes = new MongoTypeRegistry()
     .add('objectId', {
       validate: zodObjectId,
       bsonType: 'objectId'
@@ -200,7 +200,7 @@ test('supports arrays with custom types', () => {
   });
   
   const result = zodToCompatibleJsonSchema(schema, {
-    customTypes
+    mongoTypes
   });
   
   expect(result.properties!.items.type).toBe('array');
@@ -216,7 +216,7 @@ test('supports custom MongoDB types beyond objectId and date', () => {
   
   const zodDecimalType = z.custom<string>(zodDecimal);
   
-  const customTypes = new CustomTypeRegistry()
+  const mongoTypes = new MongoTypeRegistry()
     .add('decimal', {
       validate: zodDecimalType,
       bsonType: 'decimal'
@@ -228,7 +228,7 @@ test('supports custom MongoDB types beyond objectId and date', () => {
   });
   
   const result = zodToCompatibleJsonSchema(schema, {
-    customTypes
+    mongoTypes
   });
   
   const mongoSchema = convertJsonSchemaToMongoSchema(result);
@@ -236,8 +236,8 @@ test('supports custom MongoDB types beyond objectId and date', () => {
   expect(mongoSchema.properties.price).toEqual({ bsonType: 'decimal' });
 });
 
-test('CustomTypeRegistry class methods work correctly', () => {
-  const registry = new CustomTypeRegistry();
+test('MongoTypeRegistry class methods work correctly', () => {
+  const registry = new MongoTypeRegistry();
   
   // Test add method
   registry.add('objectId', {

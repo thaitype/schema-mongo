@@ -2,7 +2,7 @@ import { test, expect, beforeAll, afterAll } from 'vitest';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { MongoClient, Db, ObjectId } from 'mongodb';
 import { z } from 'zod';
-import { convertJsonSchemaToMongoSchema, CustomTypeRegistry } from '@thaitype/schema-mongo';
+import { convertJsonSchemaToMongoSchema, MongoTypeRegistry } from '@thaitype/schema-mongo';
 import { zodToCompatibleJsonSchema } from '@thaitype/schema-mongo/adapters/zod';
 
 let mongod: MongoMemoryServer;
@@ -208,7 +208,7 @@ test('full pipeline: Zod dates → MongoDB validation with actual Date objects',
   const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
   
   // 2. Create type-safe custom type registry
-  const customTypes = new CustomTypeRegistry()
+  const mongoTypes = new MongoTypeRegistry()
     .add('objectId', {
       validate: zodObjectId,
       bsonType: 'objectId'
@@ -237,7 +237,7 @@ test('full pipeline: Zod dates → MongoDB validation with actual Date objects',
 
   // 3. Full conversion pipeline with custom types
   const jsonSchema = zodToCompatibleJsonSchema(EventSchema, {
-    customTypes
+    mongoTypes
   });
   const mongoSchema = convertJsonSchemaToMongoSchema(jsonSchema);
 
@@ -386,7 +386,7 @@ test('full pipeline: ObjectId + Date custom types → MongoDB validation', async
   });
 
   // 3. Convert using custom types registry
-  const customTypes = new CustomTypeRegistry()
+  const mongoTypes = new MongoTypeRegistry()
     .add('objectId', {
       validate: zodObjectId,
       bsonType: 'objectId'
@@ -397,7 +397,7 @@ test('full pipeline: ObjectId + Date custom types → MongoDB validation', async
     });
   
   const jsonSchema = zodToCompatibleJsonSchema(UserSchema, {
-    customTypes
+    mongoTypes
   });
   
   const mongoSchema = convertJsonSchemaToMongoSchema(jsonSchema);

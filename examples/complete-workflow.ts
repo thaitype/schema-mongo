@@ -1,14 +1,14 @@
 import { z } from 'zod';
 import { MongoClient, ObjectId } from 'mongodb';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { CustomTypeRegistry } from '@thaitype/schema-mongo';
+import { MongoTypeRegistry } from '@thaitype/schema-mongo';
 import { zodSchema } from '@thaitype/schema-mongo/adapters/zod';
 
 /**
  * Complete workflow example: Custom types → Schema → MongoDB validation → Data insertion
  * 
  * This example demonstrates the full flow from declaring custom types using the 
- * clean CustomTypeRegistry pattern to successfully inserting validated data into MongoDB.
+ * clean MongoTypeRegistry pattern to successfully inserting validated data into MongoDB.
  */
 
 async function completeWorkflow() {
@@ -20,11 +20,11 @@ async function completeWorkflow() {
     ObjectId.isValid(value as string | ObjectId)
   );
   
-  // 2. Create type-safe CustomTypeRegistry
-  console.log('2️⃣ Creating CustomTypeRegistry...');
-  const customTypes = new CustomTypeRegistry()
-    .add('objectId', {
-      validate: zodObjectId,
+  // 2. Create type-safe MongoTypeRegistry
+  console.log('2️⃣ Creating MongoTypeRegistry...');
+  const mongoTypes = new MongoTypeRegistry()
+    .register('objectId', {
+      schema: zodObjectId,
       bsonType: 'objectId'
     });
 
@@ -42,7 +42,7 @@ async function completeWorkflow() {
 
   // 4. Convert to MongoDB schema
   console.log('4️⃣ Converting to MongoDB schema...');
-  const mongoSchema = zodSchema(UserSchema, { customTypes }).toMongoSchema();
+  const mongoSchema = zodSchema(UserSchema, { mongoTypes }).toMongoSchema();
   console.log('Generated MongoDB schema:', JSON.stringify(mongoSchema, null, 2));
 
   // 5. Setup MongoDB (using in-memory for demo)
@@ -108,7 +108,7 @@ async function completeWorkflow() {
   console.log('\n🎉 Complete workflow finished successfully!');
   console.log('📋 Summary:');
   console.log('   • Custom ObjectId type declared with clean syntax');
-  console.log('   • CustomTypeRegistry configured with type safety');
+  console.log('   • MongoTypeRegistry configured with type safety');
   console.log('   • Zod schema converted to MongoDB validation schema');
   console.log('   • MongoDB collection created with validation');
   console.log('   • Valid data inserted successfully');

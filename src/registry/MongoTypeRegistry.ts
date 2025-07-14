@@ -3,9 +3,9 @@ import type { StandardSchemaV1 } from '@standard-schema/spec';
 /**
  * Information about a custom type for MongoDB schema generation
  */
-export interface CustomTypeInfo<S extends StandardSchemaV1 = StandardSchemaV1> {
+export interface MongoTypeInfo<S extends StandardSchemaV1 = StandardSchemaV1> {
   /** The validator schema that implements StandardSchemaV1 */
-  validate: S;
+  schema: S;
   /** The corresponding MongoDB BSON type */
   bsonType: string;
   // Future extensions: doc, format, transformer, etc.
@@ -20,11 +20,11 @@ export interface CustomTypeInfo<S extends StandardSchemaV1 = StandardSchemaV1> {
  * @example
  * ```typescript
  * import { z } from 'zod';
- * import { CustomTypeRegistry } from '@thaitype/schema-mongo';
+ * import { MongoTypeRegistry } from '@thaitype/schema-mongo';
  *
  * const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
  *
- * const customTypes = new CustomTypeRegistry()
+ * const mongoTypes = new MongoTypeRegistry()
  *   .add('objectId', {
  *     validate: zodObjectId,
  *     bsonType: 'objectId'
@@ -35,7 +35,7 @@ export interface CustomTypeInfo<S extends StandardSchemaV1 = StandardSchemaV1> {
  *   });
  * ```
  */
-export class CustomTypeRegistry<T extends CustomTypeInfo = CustomTypeInfo> {
+export class MongoTypeRegistry<T extends MongoTypeInfo = MongoTypeInfo> {
   private _types = new Map<string, T>();
 
   /**
@@ -45,7 +45,7 @@ export class CustomTypeRegistry<T extends CustomTypeInfo = CustomTypeInfo> {
    * @param typeInfo - Type information including validator and bsonType
    * @returns This registry instance for method chaining
    */
-  add(name: string, typeInfo: T): this {
+  register(name: string, typeInfo: T): this {
     this._types.set(name, typeInfo);
     return this;
   }
@@ -56,9 +56,9 @@ export class CustomTypeRegistry<T extends CustomTypeInfo = CustomTypeInfo> {
    * @param name - Name of the custom type
    * @returns Type information if found, undefined otherwise
    */
-  get<S extends StandardSchemaV1 = StandardSchemaV1>(name: string): CustomTypeInfo<S> | undefined {
+  get<S extends StandardSchemaV1 = StandardSchemaV1>(name: string): MongoTypeInfo<S> {
     // Cast to allow user to provide specific S type for full type-safety
-    return this._types.get(name) as CustomTypeInfo<S> | undefined;
+    return this._types.get(name) as unknown as MongoTypeInfo<S>;
   }
 
   /**
@@ -97,7 +97,7 @@ export class CustomTypeRegistry<T extends CustomTypeInfo = CustomTypeInfo> {
    */
   findByValidator(validator: StandardSchemaV1): string | undefined {
     for (const [name, typeInfo] of this._types.entries()) {
-      if (typeInfo.validate === validator) {
+      if (typeInfo.schema === validator) {
         return name;
       }
     }

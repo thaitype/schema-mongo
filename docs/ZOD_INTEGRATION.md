@@ -1,24 +1,24 @@
 # Zod Adapter Guide
 
-This guide covers using the Zod adapter with `@thaitype/schema-mongo` for converting Zod schemas to MongoDB validation schemas using the modern CustomTypeRegistry approach.
+This guide covers using the Zod adapter with `@thaitype/schema-mongo` for converting Zod schemas to MongoDB validation schemas using the modern MongoTypeRegistry approach.
 
 ## Overview
 
-The Zod adapter (`zodSchema`) provides seamless conversion from Zod schemas to MongoDB-compatible validation schemas with type-safe custom type support through the CustomTypeRegistry system, leveraging StandardSchemaV1 compliance.
+The Zod adapter (`zodSchema`) provides seamless conversion from Zod schemas to MongoDB-compatible validation schemas with type-safe custom type support through the MongoTypeRegistry system, leveraging StandardSchemaV1 compliance.
 
 ## Quick Start
 
 ```typescript
 import { z } from 'zod';
 import { ObjectId } from 'mongodb';
-import { CustomTypeRegistry } from '@thaitype/schema-mongo';
+import { MongoTypeRegistry } from '@thaitype/schema-mongo';
 import { zodSchema } from '@thaitype/schema-mongo/adapters/zod';
 
 // Define custom ObjectId type with clean syntax
 const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
 
-// Create type-safe CustomTypeRegistry
-const customTypes = new CustomTypeRegistry()
+// Create type-safe MongoTypeRegistry
+const mongoTypes = new MongoTypeRegistry()
   .add('objectId', {
     validate: zodObjectId,
     bsonType: 'objectId'
@@ -34,7 +34,7 @@ const UserSchema = z.object({
 });
 
 // Convert to MongoDB schema
-const mongoSchema = zodSchema(UserSchema, { customTypes }).toMongoSchema();
+const mongoSchema = zodSchema(UserSchema, { mongoTypes }).toMongoSchema();
 
 // Use with MongoDB
 await db.createCollection('users', {
@@ -85,21 +85,21 @@ z.object({
 });
 ```
 
-## CustomTypeRegistry System
+## MongoTypeRegistry System
 
-The modern CustomTypeRegistry provides type-safe, StandardSchemaV1-compliant custom type handling.
+The modern MongoTypeRegistry provides type-safe, StandardSchemaV1-compliant custom type handling.
 
 ### ObjectId Support
 
 ```typescript
 import { ObjectId } from 'mongodb';
-import { CustomTypeRegistry } from '@thaitype/schema-mongo';
+import { MongoTypeRegistry } from '@thaitype/schema-mongo';
 
 // Clean, modern ObjectId validation
 const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
 
 // Type-safe registry
-const customTypes = new CustomTypeRegistry()
+const mongoTypes = new MongoTypeRegistry()
   .add('objectId', {
     validate: zodObjectId,
     bsonType: 'objectId'
@@ -114,7 +114,7 @@ const schema = z.object({
   }))
 });
 
-const mongoSchema = zodSchema(schema, { customTypes }).toMongoSchema();
+const mongoSchema = zodSchema(schema, { mongoTypes }).toMongoSchema();
 
 // Results in proper MongoDB ObjectId validation:
 // _id: { bsonType: 'objectId' }
@@ -131,7 +131,7 @@ const zodDecimal = z.custom<string>(value => /^\d+\.\d+$/.test(value));
 const zodBinary = z.custom<Uint8Array>(value => value instanceof Uint8Array);
 
 // Type-safe registry with method chaining
-const customTypes = new CustomTypeRegistry()
+const mongoTypes = new MongoTypeRegistry()
   .add('objectId', {
     validate: zodObjectId,
     bsonType: 'objectId'
@@ -152,7 +152,7 @@ const ProductSchema = z.object({
   createdAt: z.date()
 });
 
-const mongoSchema = zodSchema(ProductSchema, { customTypes }).toMongoSchema();
+const mongoSchema = zodSchema(ProductSchema, { mongoTypes }).toMongoSchema();
 
 // Results in:
 // _id: { bsonType: 'objectId' }
@@ -163,7 +163,7 @@ const mongoSchema = zodSchema(ProductSchema, { customTypes }).toMongoSchema();
 
 ### Supported MongoDB Types
 
-The CustomTypeRegistry supports any valid MongoDB BSON type:
+The MongoTypeRegistry supports any valid MongoDB BSON type:
 
 - `objectId` - MongoDB ObjectId
 - `date` - MongoDB Date  
@@ -183,7 +183,7 @@ The Zod adapter provides a fluent API for clean, readable code:
 Returns the intermediate JSON Schema with MongoDB type hints:
 
 ```typescript
-const jsonSchema = zodSchema(UserSchema, { customTypes }).toJsonSchema();
+const jsonSchema = zodSchema(UserSchema, { mongoTypes }).toJsonSchema();
 
 // Returns JSON Schema with __mongoType metadata
 // {
@@ -200,7 +200,7 @@ const jsonSchema = zodSchema(UserSchema, { customTypes }).toJsonSchema();
 Returns the final MongoDB-compatible schema:
 
 ```typescript
-const mongoSchema = zodSchema(UserSchema, { customTypes }).toMongoSchema();
+const mongoSchema = zodSchema(UserSchema, { mongoTypes }).toMongoSchema();
 
 // Returns MongoDB schema
 // {
@@ -218,14 +218,14 @@ const mongoSchema = zodSchema(UserSchema, { customTypes }).toMongoSchema();
 
 ```typescript
 interface ZodToMongoOptions {
-  customTypes?: CustomTypeRegistry | Record<string, string>; // Modern + Legacy support
+  mongoTypes?: MongoTypeRegistry | Record<string, string>; // Modern + Legacy support
 }
 ```
 
-The `customTypes` option accepts a CustomTypeRegistry for type-safe configuration:
+The `mongoTypes` option accepts a MongoTypeRegistry for type-safe configuration:
 
 ```typescript
-const customTypes = new CustomTypeRegistry()
+const mongoTypes = new MongoTypeRegistry()
   .add('objectId', {
     validate: zodObjectId,
     bsonType: 'objectId'
@@ -235,12 +235,12 @@ const customTypes = new CustomTypeRegistry()
     bsonType: 'decimal'
   });
 
-const options: ZodToMongoOptions = { customTypes };
+const options: ZodToMongoOptions = { mongoTypes };
 ```
 
 ### Registry Benefits
 
-The CustomTypeRegistry approach provides:
+The MongoTypeRegistry approach provides:
 
 ✅ **Type Safety**: Full TypeScript inference with StandardSchemaV1 compliance  
 ✅ **Clean Syntax**: Arrow functions work perfectly - no function naming required  
@@ -251,7 +251,7 @@ The CustomTypeRegistry approach provides:
 ```typescript
 // ✅ Modern approach - Clean and type-safe
 const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
-const customTypes = new CustomTypeRegistry()
+const mongoTypes = new MongoTypeRegistry()
   .add('objectId', { validate: zodObjectId, bsonType: 'objectId' });
 ```
 
@@ -263,14 +263,14 @@ const customTypes = new CustomTypeRegistry()
 import { z } from 'zod';
 import { MongoClient, ObjectId } from 'mongodb';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { CustomTypeRegistry } from '@thaitype/schema-mongo';
+import { MongoTypeRegistry } from '@thaitype/schema-mongo';
 import { zodSchema } from '@thaitype/schema-mongo/adapters/zod';
 
 async function userManagementExample() {
   // 1. Define custom types
   const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
   
-  const customTypes = new CustomTypeRegistry()
+  const mongoTypes = new MongoTypeRegistry()
     .add('objectId', {
       validate: zodObjectId,
       bsonType: 'objectId'
@@ -293,7 +293,7 @@ async function userManagementExample() {
   });
 
   // 3. Convert to MongoDB schema
-  const mongoSchema = zodSchema(UserSchema, { customTypes }).toMongoSchema();
+  const mongoSchema = zodSchema(UserSchema, { mongoTypes }).toMongoSchema();
 
   // 4. Setup MongoDB with validation
   const mongod = await MongoMemoryServer.create();
@@ -349,7 +349,7 @@ async function userManagementExample() {
 const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
 const zodDecimal = z.custom<string>(value => /^\d+\.\d+$/.test(value));
 
-const customTypes = new CustomTypeRegistry()
+const mongoTypes = new MongoTypeRegistry()
   .add('objectId', {
     validate: zodObjectId,
     bsonType: 'objectId'
@@ -376,16 +376,16 @@ const ProductSchema = z.object({
   updatedAt: z.date()
 });
 
-const mongoSchema = zodSchema(ProductSchema, { customTypes }).toMongoSchema();
+const mongoSchema = zodSchema(ProductSchema, { mongoTypes }).toMongoSchema();
 ```
 
 ## Best Practices
 
-### 1. Reuse CustomTypeRegistry
+### 1. Reuse MongoTypeRegistry
 
 ```typescript
 // Create once, use everywhere
-const mongoTypes = new CustomTypeRegistry()
+const mongoTypes = new MongoTypeRegistry()
   .add('objectId', {
     validate: z.custom<ObjectId | string>(value => ObjectId.isValid(value)),
     bsonType: 'objectId'
@@ -396,8 +396,8 @@ const mongoTypes = new CustomTypeRegistry()
   });
 
 // Use across schemas
-const userSchema = zodSchema(UserSchema, { customTypes: mongoTypes });
-const productSchema = zodSchema(ProductSchema, { customTypes: mongoTypes });
+const userSchema = zodSchema(UserSchema, { mongoTypes: mongoTypes });
+const productSchema = zodSchema(ProductSchema, { mongoTypes: mongoTypes });
 ```
 
 ### 2. Test with Real MongoDB
@@ -406,7 +406,7 @@ const productSchema = zodSchema(ProductSchema, { customTypes: mongoTypes });
 import { MongoMemoryServer } from 'mongodb-memory-server';
 
 async function testSchema(schema: z.ZodSchema, testData: any) {
-  const mongoSchema = zodSchema(schema, { customTypes }).toMongoSchema();
+  const mongoSchema = zodSchema(schema, { mongoTypes }).toMongoSchema();
   
   // Test with real MongoDB
   const mongod = await MongoMemoryServer.create();
@@ -473,7 +473,7 @@ Use Zod for application-level validation and schema-mongo for MongoDB schema set
 const validatedData = UserSchema.parse(inputData);
 
 // 2. MongoDB schema setup with schema-mongo
-const mongoSchema = zodSchema(UserSchema, { customTypes }).toMongoSchema();
+const mongoSchema = zodSchema(UserSchema, { mongoTypes }).toMongoSchema();
 
 await db.createCollection('users', {
   validator: { $jsonSchema: mongoSchema }
@@ -489,13 +489,13 @@ await db.collection('users').insertOne(validatedData);
 
 **Problem**: Custom type not being converted to MongoDB type
 
-**Solution**: Ensure you're using CustomTypeRegistry correctly:
+**Solution**: Ensure you're using MongoTypeRegistry correctly:
 
 ```typescript
 // ✅ Correct
 const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
 
-const customTypes = new CustomTypeRegistry()
+const mongoTypes = new MongoTypeRegistry()
   .add('objectId', {
     validate: zodObjectId,  // Same instance used in schema
     bsonType: 'objectId'
@@ -505,7 +505,7 @@ const schema = z.object({
   _id: zodObjectId  // Same instance as registered
 });
 
-const mongoSchema = zodSchema(schema, { customTypes }).toMongoSchema();
+const mongoSchema = zodSchema(schema, { mongoTypes }).toMongoSchema();
 ```
 
 ### MongoDB Validation Errors
@@ -525,17 +525,17 @@ const mongoSchema = zodSchema(schema, { customTypes }).toMongoSchema();
 
 2. **Verify schema conversion**: Check the generated MongoDB schema:
    ```typescript
-   const mongoSchema = zodSchema(schema, { customTypes }).toMongoSchema();
+   const mongoSchema = zodSchema(schema, { mongoTypes }).toMongoSchema();
    console.log(JSON.stringify(mongoSchema, null, 2));
    ```
 
 3. **Test step by step**: Verify each conversion step:
    ```typescript
-   const jsonSchema = zodSchema(schema, { customTypes }).toJsonSchema();
+   const jsonSchema = zodSchema(schema, { mongoTypes }).toJsonSchema();
    console.log('JSON Schema:', jsonSchema);
    
-   const mongoSchema = zodSchema(schema, { customTypes }).toMongoSchema();
+   const mongoSchema = zodSchema(schema, { mongoTypes }).toMongoSchema();
    console.log('MongoDB Schema:', mongoSchema);
    ```
 
-The modern CustomTypeRegistry approach provides a clean, type-safe way to convert Zod schemas to MongoDB validation schemas while maintaining excellent developer experience and StandardSchemaV1 compliance.
+The modern MongoTypeRegistry approach provides a clean, type-safe way to convert Zod schemas to MongoDB validation schemas while maintaining excellent developer experience and StandardSchemaV1 compliance.
