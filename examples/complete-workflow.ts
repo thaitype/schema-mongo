@@ -23,7 +23,7 @@ async function completeWorkflow() {
   // 2. Create type-safe MongoTypeRegistry
   console.log('2️⃣ Creating MongoTypeRegistry...');
   const mongoTypes = new MongoTypeRegistry()
-    .register('objectId', {
+    .register('zodObjectId', {
       schema: zodObjectId,
       bsonType: 'objectId'
     });
@@ -31,7 +31,7 @@ async function completeWorkflow() {
   // 3. Define Zod schema with mongo types
   console.log('3️⃣ Defining Zod schema with mongo types...');
   const UserSchema = z.object({
-    _id: mongoTypes.get('objectId'),
+    _id: mongoTypes.get('zodObjectId'),
     name: z.string().min(2),
     email: z.string().email(),
     age: z.number().int().min(0).max(120),
