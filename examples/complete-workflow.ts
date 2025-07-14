@@ -31,7 +31,7 @@ async function completeWorkflow() {
   // 3. Define Zod schema with mongo types
   console.log('3️⃣ Defining Zod schema with mongo types...');
   const UserSchema = z.object({
-    _id: zodObjectId,
+    _id: mongoTypes.get('objectId'),
     name: z.string().min(2),
     email: z.string().email(),
     age: z.number().int().min(0).max(120),
