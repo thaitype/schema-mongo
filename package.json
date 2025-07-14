@@ -24,7 +24,10 @@
     "build": "tsup src/main.ts --dts --format esm,cjs",
     "format": "prettier -w src",
     "lint": "tsc --noEmit && eslint ./src && prettier -c src",
-    "lint:fix": "eslint --fix ./src && prettier -w src"
+    "lint:fix": "eslint --fix ./src && prettier -w src",
+    "all": "run-s lint build test:coverage",
+    "release": "run-s all && changeset version && changeset publish",
+    "changeset": "changeset"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.5",

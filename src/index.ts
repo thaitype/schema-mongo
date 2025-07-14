@@ -48,7 +48,7 @@ const TYPE_MAPPING: Record<string, string> = {
   boolean: 'bool',
   array: 'array',
   object: 'object',
-  null: 'null'
+  null: 'null',
 };
 
 // Keywords to strip from JSON Schema when converting to MongoDB schema
@@ -60,7 +60,7 @@ const UNSUPPORTED_KEYWORDS = new Set([
   'default',
   'format', // MongoDB $jsonSchema doesn't support format validation
   'additionalProperties', // Can cause issues with complex patterns
-  '__mongoType' // Our custom metadata, processed separately
+  '__mongoType', // Our custom metadata, processed separately
 ]);
 
 /**
@@ -71,7 +71,7 @@ const UNSUPPORTED_KEYWORDS = new Set([
  */
 export function convertJsonSchemaToMongoSchema(schema: Record<string, any>): Record<string, any> {
   const result: Record<string, any> = {};
-  
+
   // Handle special MongoDB types first
   if (schema.__mongoType) {
     switch (schema.__mongoType) {
@@ -90,7 +90,7 @@ export function convertJsonSchemaToMongoSchema(schema: Record<string, any>): Rec
         }
     }
   }
-  
+
   // Convert type to bsonType (skip if we already set bsonType from __mongoType)
   if (schema.type && !result.bsonType) {
     if (Array.isArray(schema.type)) {
@@ -99,13 +99,13 @@ export function convertJsonSchemaToMongoSchema(schema: Record<string, any>): Rec
       result.bsonType = TYPE_MAPPING[schema.type] || schema.type;
     }
   }
-  
+
   // Copy all other properties except unsupported keywords
   for (const [key, value] of Object.entries(schema)) {
     if (key === 'type' || UNSUPPORTED_KEYWORDS.has(key)) {
       continue;
     }
-    
+
     // Handle nested schemas recursively
     if (key === 'properties' && typeof value === 'object' && value !== null) {
       result.properties = {};
@@ -117,10 +117,8 @@ export function convertJsonSchemaToMongoSchema(schema: Record<string, any>): Rec
     } else if (key === 'items' && typeof value === 'object' && value !== null) {
       result.items = convertJsonSchemaToMongoSchema(value);
     } else if (['allOf', 'anyOf', 'oneOf'].includes(key) && Array.isArray(value)) {
-      result[key] = value.map(item => 
-        typeof item === 'object' && item !== null 
-          ? convertJsonSchemaToMongoSchema(item) 
-          : item
+      result[key] = value.map(item =>
+        typeof item === 'object' && item !== null ? convertJsonSchemaToMongoSchema(item) : item
       );
     } else if (key === 'not' && typeof value === 'object' && value !== null) {
       result.not = convertJsonSchemaToMongoSchema(value);
@@ -129,6 +127,6 @@ export function convertJsonSchemaToMongoSchema(schema: Record<string, any>): Rec
       result[key] = value;
     }
   }
-  
+
   return result;
 }
