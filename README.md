@@ -1,6 +1,6 @@
-# @thaitype/schema-mongo
+# schema-mongo
 
-[![CI](https://github.com/thaitype/schema-mongo/actions/workflows/main.yml/badge.svg)](https://github.com/thaitype/schema-mongo/actions/workflows/main.yml) [![codecov](https://codecov.io/gh/thaitype/schema-mongo/graph/badge.svg?token=B7MCHM57BH)](https://codecov.io/gh/thaitype/schema-mongo) [![NPM Version](https://img.shields.io/npm/v/schema-mongo) ](https://www.npmjs.com/package/@thaitype/schema-mongo)[![npm downloads](https://img.shields.io/npm/dt/@thaitype/schema-mongo)](https://www.npmjs.com/@thaitype/schema-mongo) 
+[![CI](https://github.com/thaitype/schema-mongo/actions/workflows/main.yml/badge.svg)](https://github.com/thaitype/schema-mongo/actions/workflows/main.yml) [![codecov](https://codecov.io/gh/thaitype/schema-mongo/graph/badge.svg?token=B7MCHM57BH)](https://codecov.io/gh/thaitype/schema-mongo) [![NPM Version](https://img.shields.io/npm/v/schema-mongo) ](https://www.npmjs.com/package/schema-mongo)[![npm downloads](https://img.shields.io/npm/dt/schema-mongo)](https://www.npmjs.com/schema-mongo) 
 
 > Convert validation schemas to MongoDB format with custom type support
 
@@ -19,16 +19,16 @@ A framework-agnostic library for converting validation schemas to MongoDB-compat
 ```typescript
 import { z } from 'zod';
 import { ObjectId } from 'mongodb';
-import { MongoTypeRegistry } from '@thaitype/schema-mongo';
-import { zodSchema } from '@thaitype/schema-mongo/adapters/zod';
+import { MongoTypeRegistry } from 'schema-mongo';
+import { zodSchema } from 'schema-mongo/adapters/zod';
 
 // Define ObjectId validator with clean syntax
 const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
 
 // Create type-safe MongoTypeRegistry
 const mongoTypes = new MongoTypeRegistry()
-  .add('objectId', {
-    validate: zodObjectId,
+  .register('objectId', {
+    schema: zodObjectId,
     bsonType: 'objectId'
   });
 
@@ -63,14 +63,14 @@ The library uses a three-layer architecture for maximum flexibility:
 
 ### Core Function (Framework-Agnostic)
 ```typescript
-import { convertJsonSchemaToMongoSchema } from '@thaitype/schema-mongo';
+import { convertJsonSchemaToMongoSchema } from 'schema-mongo';
 
 const mongoSchema = convertJsonSchemaToMongoSchema(jsonSchema);
 ```
 
 ### Zod Adapter (Current Implementation)
 ```typescript
-import { zodSchema } from '@thaitype/schema-mongo/adapters/zod';
+import { zodSchema } from 'schema-mongo/adapters/zod';
 
 const mongoSchema = zodSchema(zodSchema).toMongoSchema();
 ```
@@ -99,14 +99,14 @@ The library features a type-safe MongoTypeRegistry system leveraging StandardSch
 ### ObjectId Support
 ```typescript
 import { ObjectId } from 'mongodb';
-import { MongoTypeRegistry } from '@thaitype/schema-mongo';
+import { MongoTypeRegistry } from 'schema-mongo';
 
 // Clean, modern ObjectId validation
 const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
 
 const mongoTypes = new MongoTypeRegistry()
-  .add('objectId', {
-    validate: zodObjectId,
+  .register('objectId', {
+    schema: zodObjectId,
     bsonType: 'objectId'
   });
 
@@ -127,12 +127,12 @@ const zodDecimal = z.custom<string>(value => /^\d+\.\d+$/.test(value));
 
 // Type-safe registry with method chaining
 const mongoTypes = new MongoTypeRegistry()
-  .add('objectId', {
-    validate: zodObjectId,
+  .register('objectId', {
+    schema: zodObjectId,
     bsonType: 'objectId'
   })
-  .add('decimal', {
-    validate: zodDecimal,
+  .register('decimal', {
+    schema: zodDecimal,
     bsonType: 'decimal'
   });
 
@@ -237,7 +237,7 @@ const AddressSchema = z.object({
 // Define custom types once
 const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
 const mongoTypes = new MongoTypeRegistry()
-  .add('objectId', { validate: zodObjectId, bsonType: 'objectId' });
+  .register('objectId', { schema: zodObjectId, bsonType: 'objectId' });
 
 const UserSchema = z.object({
   _id: zodObjectId,
@@ -269,7 +269,7 @@ For validation constraints, use Zod directly in your application layer:
 // Use Zod for application validation
 const result = UserSchema.parse(userData);
 
-// Use @thaitype/schema-mongo for MongoDB schema setup
+// Use schema-mongo for MongoDB schema setup
 const mongoSchema = zodSchema(UserSchema).toMongoSchema();
 ```
 
@@ -286,7 +286,7 @@ The modern MongoTypeRegistry approach provides:
 // ✅ Modern approach - Clean and type-safe
 const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
 const mongoTypes = new MongoTypeRegistry()
-  .add('objectId', { validate: zodObjectId, bsonType: 'objectId' });
+  .register('objectId', { schema: zodObjectId, bsonType: 'objectId' });
 ```
 
 ## Contributing

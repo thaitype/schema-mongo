@@ -26,8 +26,8 @@
     // absolute imports
     "baseUrl": ".",
     "paths": {
-      "@thaitype/schema-mongo": ["src/index.ts"],
-      "@thaitype/schema-mongo/adapters/zod": ["src/adapters/zod.ts"],
+      "schema-mongo": ["src/index.ts"],
+      "schema-mongo/adapters/zod": ["src/adapters/zod.ts"],
     }
   },
    "exclude": [

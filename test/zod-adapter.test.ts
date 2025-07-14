@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest';
 import { z } from 'zod';
-import { zodToCompatibleJsonSchema } from '@thaitype/schema-mongo/adapters/zod';
-import { convertJsonSchemaToMongoSchema } from '@thaitype/schema-mongo';
+import { zodToCompatibleJsonSchema } from 'schema-mongo/adapters/zod';
+import { convertJsonSchemaToMongoSchema } from 'schema-mongo';
 
 test('converts z.date() to string with __mongoType metadata', () => {
   const schema = z.date();

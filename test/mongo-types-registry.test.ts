@@ -1,8 +1,8 @@
 import { test, expect } from 'vitest';
 import { z } from 'zod';
 import { ObjectId } from 'mongodb';
-import { zodToCompatibleJsonSchema } from '@thaitype/schema-mongo/adapters/zod';
-import { convertJsonSchemaToMongoSchema, MongoTypeRegistry } from '@thaitype/schema-mongo';
+import { zodToCompatibleJsonSchema } from 'schema-mongo/adapters/zod';
+import { convertJsonSchemaToMongoSchema, MongoTypeRegistry } from 'schema-mongo';
 
 // Custom ObjectId validator - clean pattern
 const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));

@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest';
 import { z } from 'zod';
 import { ObjectId } from 'mongodb';
-import { zodSchema } from '@thaitype/schema-mongo/adapters/zod';
+import { zodSchema } from 'schema-mongo/adapters/zod';
 
 // Custom ObjectId validator - cleaner pattern with named function
 const zodObjectId = z.custom<ObjectId | string>(function zodObjectId(value) {

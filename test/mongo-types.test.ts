@@ -1,8 +1,8 @@
 import { test, expect } from 'vitest';
 import { z } from 'zod';
 import { ObjectId } from 'mongodb';
-import { zodToCompatibleJsonSchema } from '@thaitype/schema-mongo/adapters/zod';
-import { convertJsonSchemaToMongoSchema } from '@thaitype/schema-mongo';
+import { zodToCompatibleJsonSchema } from 'schema-mongo/adapters/zod';
+import { convertJsonSchemaToMongoSchema } from 'schema-mongo';
 
 // Mock ObjectId validation for testing
 const mockObjectIdValidation = (value: any): boolean => {

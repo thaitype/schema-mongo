@@ -20,7 +20,7 @@ export interface MongoTypeInfo<S extends StandardSchemaV1 = StandardSchemaV1> {
  * @example
  * ```typescript
  * import { z } from 'zod';
- * import { MongoTypeRegistry } from '@thaitype/schema-mongo';
+ * import { MongoTypeRegistry } from 'schema-mongo';
  *
  * const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
  *

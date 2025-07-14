@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { convertJsonSchemaToMongoSchema } from '@thaitype/schema-mongo';
+import { convertJsonSchemaToMongoSchema } from 'schema-mongo';
 
 test('converts basic string type to bsonType', () => {
   const input = {

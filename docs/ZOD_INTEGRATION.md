@@ -1,6 +1,6 @@
 # Zod Adapter Guide
 
-This guide covers using the Zod adapter with `@thaitype/schema-mongo` for converting Zod schemas to MongoDB validation schemas using the modern MongoTypeRegistry approach.
+This guide covers using the Zod adapter with `schema-mongo` for converting Zod schemas to MongoDB validation schemas using the modern MongoTypeRegistry approach.
 
 ## Overview
 
@@ -11,16 +11,16 @@ The Zod adapter (`zodSchema`) provides seamless conversion from Zod schemas to M
 ```typescript
 import { z } from 'zod';
 import { ObjectId } from 'mongodb';
-import { MongoTypeRegistry } from '@thaitype/schema-mongo';
-import { zodSchema } from '@thaitype/schema-mongo/adapters/zod';
+import { MongoTypeRegistry } from 'schema-mongo';
+import { zodSchema } from 'schema-mongo/adapters/zod';
 
 // Define custom ObjectId type with clean syntax
 const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
 
 // Create type-safe MongoTypeRegistry
 const mongoTypes = new MongoTypeRegistry()
-  .add('objectId', {
-    validate: zodObjectId,
+  .register('objectId', {
+    schema: zodObjectId,
     bsonType: 'objectId'
   });
 
@@ -93,15 +93,15 @@ The modern MongoTypeRegistry provides type-safe, StandardSchemaV1-compliant cust
 
 ```typescript
 import { ObjectId } from 'mongodb';
-import { MongoTypeRegistry } from '@thaitype/schema-mongo';
+import { MongoTypeRegistry } from 'schema-mongo';
 
 // Clean, modern ObjectId validation
 const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
 
 // Type-safe registry
 const mongoTypes = new MongoTypeRegistry()
-  .add('objectId', {
-    validate: zodObjectId,
+  .register('objectId', {
+    schema: zodObjectId,
     bsonType: 'objectId'
   });
 
@@ -132,16 +132,16 @@ const zodBinary = z.custom<Uint8Array>(value => value instanceof Uint8Array);
 
 // Type-safe registry with method chaining
 const mongoTypes = new MongoTypeRegistry()
-  .add('objectId', {
-    validate: zodObjectId,
+  .register('objectId', {
+    schema: zodObjectId,
     bsonType: 'objectId'
   })
-  .add('decimal', {
-    validate: zodDecimal,
+  .register('decimal', {
+    schema: zodDecimal,
     bsonType: 'decimal'
   })
-  .add('binData', {
-    validate: zodBinary,
+  .register('binData', {
+    schema: zodBinary,
     bsonType: 'binData'
   });
 
@@ -226,12 +226,12 @@ The `mongoTypes` option accepts a MongoTypeRegistry for type-safe configuration:
 
 ```typescript
 const mongoTypes = new MongoTypeRegistry()
-  .add('objectId', {
-    validate: zodObjectId,
+  .register('objectId', {
+    schema: zodObjectId,
     bsonType: 'objectId'
   })
-  .add('decimal', {
-    validate: zodDecimal, 
+  .register('decimal', {
+    schema: zodDecimal, 
     bsonType: 'decimal'
   });
 
@@ -252,7 +252,7 @@ The MongoTypeRegistry approach provides:
 // ✅ Modern approach - Clean and type-safe
 const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
 const mongoTypes = new MongoTypeRegistry()
-  .add('objectId', { validate: zodObjectId, bsonType: 'objectId' });
+  .register('objectId', { schema: zodObjectId, bsonType: 'objectId' });
 ```
 
 ## Complete Example
@@ -263,16 +263,16 @@ const mongoTypes = new MongoTypeRegistry()
 import { z } from 'zod';
 import { MongoClient, ObjectId } from 'mongodb';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { MongoTypeRegistry } from '@thaitype/schema-mongo';
-import { zodSchema } from '@thaitype/schema-mongo/adapters/zod';
+import { MongoTypeRegistry } from 'schema-mongo';
+import { zodSchema } from 'schema-mongo/adapters/zod';
 
 async function userManagementExample() {
   // 1. Define custom types
   const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
   
   const mongoTypes = new MongoTypeRegistry()
-    .add('objectId', {
-      validate: zodObjectId,
+    .register('objectId', {
+      schema: zodObjectId,
       bsonType: 'objectId'
     });
 
@@ -350,12 +350,12 @@ const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value)
 const zodDecimal = z.custom<string>(value => /^\d+\.\d+$/.test(value));
 
 const mongoTypes = new MongoTypeRegistry()
-  .add('objectId', {
-    validate: zodObjectId,
+  .register('objectId', {
+    schema: zodObjectId,
     bsonType: 'objectId'
   })
-  .add('decimal', {
-    validate: zodDecimal,
+  .register('decimal', {
+    schema: zodDecimal,
     bsonType: 'decimal'
   });
 
@@ -386,12 +386,12 @@ const mongoSchema = zodSchema(ProductSchema, { mongoTypes }).toMongoSchema();
 ```typescript
 // Create once, use everywhere
 const mongoTypes = new MongoTypeRegistry()
-  .add('objectId', {
-    validate: z.custom<ObjectId | string>(value => ObjectId.isValid(value)),
+  .register('objectId', {
+    schema: z.custom<ObjectId | string>(value => ObjectId.isValid(value)),
     bsonType: 'objectId'
   })
-  .add('decimal', {
-    validate: z.custom<string>(value => /^\d+\.\d+$/.test(value)),
+  .register('decimal', {
+    schema: z.custom<string>(value => /^\d+\.\d+$/.test(value)),
     bsonType: 'decimal'
   });
 
@@ -496,8 +496,8 @@ await db.collection('users').insertOne(validatedData);
 const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
 
 const mongoTypes = new MongoTypeRegistry()
-  .add('objectId', {
-    validate: zodObjectId,  // Same instance used in schema
+  .register('objectId', {
+    schema: zodObjectId,  // Same instance used in schema
     bsonType: 'objectId'
   });
 

@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { MongoClient, ObjectId } from 'mongodb';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { MongoTypeRegistry } from '@thaitype/schema-mongo';
-import { zodSchema } from '@thaitype/schema-mongo/adapters/zod';
+import { MongoTypeRegistry } from 'schema-mongo';
+import { zodSchema } from 'schema-mongo/adapters/zod';
 
 /**
  * Complete workflow example: Custom types → Schema → MongoDB validation → Data insertion
