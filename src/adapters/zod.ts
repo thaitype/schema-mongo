@@ -20,7 +20,7 @@ interface ExtendedJsonSchema {
  * Configuration options for custom MongoDB type mapping
  */
 export interface ZodToMongoOptions {
-  customTypes?: Record<string, 'date' | 'objectId' | string>;
+  customTypes?: Record<string, 'date' | 'objectId' | (string & {})>;
 }
 
 /**
