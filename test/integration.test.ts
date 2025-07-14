@@ -3,6 +3,7 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import { MongoClient, Db } from 'mongodb';
 import { z } from 'zod';
 import { convertJsonSchemaToMongoSchema } from '../src/index';
+import { zodToCompatibleJsonSchema } from '../src/adapters/zod';
 
 let mongod: MongoMemoryServer;
 let client: MongoClient;
@@ -200,4 +201,140 @@ test('should validate Zod schema with complex composition', async () => {
 
   // Clean up
   await db.dropCollection('zodcomplex');
+});
+
+test('full pipeline: Zod dates → MongoDB validation with actual Date objects', async () => {
+  // 1. Complex Zod schema with various date scenarios
+  const EventSchema = z.object({
+    _id: z.string(),
+    title: z.string(),
+    startDate: z.date(),           // Required date
+    endDate: z.date().optional(),  // Optional date
+    schedule: z.object({
+      createdAt: z.date(),
+      timezone: z.string(),
+      reminders: z.array(z.object({
+        triggerAt: z.date(),
+        message: z.string(),
+        sent: z.boolean().optional()
+      })).optional()
+    }),
+    metadata: z.object({
+      lastUpdated: z.date(),
+      version: z.number().int()
+    }).optional()
+  });
+
+  // 2. Full conversion pipeline
+  const jsonSchema = zodToCompatibleJsonSchema(EventSchema);
+  const mongoSchema = convertJsonSchemaToMongoSchema(jsonSchema);
+
+  // Verify the schema has proper date types
+  expect(mongoSchema.properties.startDate.bsonType).toBe('date');
+  expect(mongoSchema.properties.endDate.bsonType).toBe('date');
+  expect(mongoSchema.properties.schedule.properties.createdAt.bsonType).toBe('date');
+
+  // 3. MongoDB collection with validation
+  await db.createCollection('events', {
+    validator: { $jsonSchema: mongoSchema },
+    validationAction: 'error',
+    validationLevel: 'strict'
+  });
+
+  const collection = db.collection('events');
+
+  // 4. Test with actual BSON Date objects - should succeed
+  const validEvent = {
+    _id: 'event-123',
+    title: 'Test Event',
+    startDate: new Date('2025-01-15T10:00:00Z'),  // BSON Date
+    endDate: new Date('2025-01-15T12:00:00Z'),    // BSON Date
+    schedule: {
+      createdAt: new Date(),                       // BSON Date
+      timezone: 'UTC',
+      reminders: [{
+        triggerAt: new Date('2025-01-15T09:00:00Z'), // BSON Date
+        message: 'Event starts in 1 hour',
+        sent: false
+      }]
+    },
+    metadata: {
+      lastUpdated: new Date(),                     // BSON Date
+      version: 1
+    }
+  };
+
+  await expect(collection.insertOne(validEvent)).resolves.toBeTruthy();
+
+  // 5. Test with minimal required fields (optional dates omitted) - should succeed
+  const minimalEvent = {
+    _id: 'event-456',
+    title: 'Minimal Event',
+    startDate: new Date('2025-02-01T14:00:00Z'),
+    schedule: {
+      createdAt: new Date(),
+      timezone: 'EST'
+    }
+  };
+
+  await expect(collection.insertOne(minimalEvent)).resolves.toBeTruthy();
+
+  // 6. Test validation failures - string instead of Date should fail
+  const invalidEventWithString = {
+    _id: 'event-789',
+    title: 'Invalid Event',
+    startDate: '2025-01-15T10:00:00Z',  // String instead of Date
+    schedule: {
+      createdAt: new Date(),
+      timezone: 'UTC'
+    }
+  };
+
+  await expect(collection.insertOne(invalidEventWithString)).rejects.toThrow();
+
+  // 7. Test missing required date field should fail
+  const invalidEventMissingDate = {
+    _id: 'event-999',
+    title: 'Missing Date Event',
+    // startDate missing (required)
+    schedule: {
+      createdAt: new Date(),
+      timezone: 'UTC'
+    }
+  };
+
+  await expect(collection.insertOne(invalidEventMissingDate)).rejects.toThrow();
+
+  // 8. Test nested date validation - invalid nested date should fail
+  const invalidNestedDate = {
+    _id: 'event-111',
+    title: 'Invalid Nested Date',
+    startDate: new Date(),
+    schedule: {
+      createdAt: 'not-a-date',  // Invalid: string instead of Date
+      timezone: 'UTC'
+    }
+  };
+
+  await expect(collection.insertOne(invalidNestedDate)).rejects.toThrow();
+
+  // 9. Test array with invalid date should fail
+  const invalidArrayDate = {
+    _id: 'event-222',
+    title: 'Invalid Array Date',
+    startDate: new Date(),
+    schedule: {
+      createdAt: new Date(),
+      timezone: 'UTC',
+      reminders: [{
+        triggerAt: 'invalid-date',  // Invalid: string instead of Date
+        message: 'Test reminder'
+      }]
+    }
+  };
+
+  await expect(collection.insertOne(invalidArrayDate)).rejects.toThrow();
+
+  // Clean up
+  await db.dropCollection('events');
 });
