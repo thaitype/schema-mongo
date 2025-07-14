@@ -1,16 +1,22 @@
 {
-  "name": "schema-mongo",
+  "name": "@thaitype/schema-mongo",
   "version": "0.0.0",
   "type": "module",
-  "description": "Agnostic library for converting validation schemas to MongoDB format with custom types, supporting Zod.",
-  "main": "./dist/main.cjs",
-  "module": "./dist/main.js",
-  "types": "./dist/main.d.ts",
+  "description": "Transform validation schemas (including Zod) to MongoDB-compatible JSON Schema, with support for custom data types.",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/dts/index.d.ts",
   "exports": {
+    "./package.json": "./package.json",
     ".": {
-      "types": "./dist/main.d.ts",
-      "import": "./dist/main.js",
-      "default": "./dist/main.cjs"
+      "types": "./dist/dts/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "default": "./dist/cjs/index.js"
+    },
+    "./adapters/zod": {
+      "types": "./dist/dts/adapters/zod.d.ts",
+      "import": "./dist/esm/adapters/zod.js",
+      "default": "./dist/cjs/adapters/zod.js"
     }
   },
   "scripts": {
@@ -21,7 +27,10 @@
     "test:coverage:feedback": "run-s test:coverage test:coverage:report",
     "test": "vitest",
     "test:ci": "vitest run",
-    "build": "tsup src/main.ts --dts --format esm,cjs",
+    "build": "bun format && bun build-esm && bun build-cjs && bun build-annotate",
+    "build-esm": "tsc -b tsconfig.build.json",
+    "build-cjs": "babel dist/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir dist/cjs --source-maps",
+    "build-annotate": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
     "format": "prettier -w src",
     "lint": "tsc --noEmit && eslint ./src && prettier -c src",
     "lint:fix": "eslint --fix ./src && prettier -w src",
@@ -30,6 +39,11 @@
     "changeset": "changeset"
   },
   "devDependencies": {
+    "@babel/cli": "^7.24.5",
+    "@babel/core": "^7.24.5",
+    "@babel/plugin-transform-export-namespace-from": "^7.24.1",
+    "@babel/plugin-transform-modules-commonjs": "^7.24.1",
+    "babel-plugin-annotate-pure-calls": "^0.4.0",
     "@changesets/cli": "^2.29.5",
     "@eslint/js": "^9.23.0",
     "@typescript-eslint/eslint-plugin": "^8.27.0",
@@ -50,6 +64,7 @@
   "license": "MIT",
   "files": [
     "dist",
+    "src",
     "README.md",
     "package.json"
   ],

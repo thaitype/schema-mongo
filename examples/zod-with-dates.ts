@@ -1,7 +1,5 @@
 import { z } from 'zod';
-import { zodToCompatibleJsonSchema } from '../src/adapters/zod';
-import { convertJsonSchemaToMongoSchema } from '../src/index';
-import { zodSchema } from '../src/adapters/zod';
+import { zodSchema } from '@thaitype/schema-mongo/adapters/zod';
 
 console.log('=== Zod Date Support Example ===');
 

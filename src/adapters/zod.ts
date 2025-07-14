@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { convertJsonSchemaToMongoSchema } from '../index';
+import { convertJsonSchemaToMongoSchema } from '../lib.js';
 
 /**
  * Extended JSON Schema that includes MongoDB-specific metadata

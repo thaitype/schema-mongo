@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest';
 import { z } from 'zod';
-import { zodSchema } from '../src/adapters/zod';
+import { zodSchema } from '@thaitype/schema-mongo/adapters/zod';
 
 // Custom ObjectId validator function
 function zodObjectId(value: any): boolean {

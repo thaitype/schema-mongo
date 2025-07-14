@@ -2,8 +2,8 @@ import { test, expect, beforeAll, afterAll } from 'vitest';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { MongoClient, Db, ObjectId } from 'mongodb';
 import { z } from 'zod';
-import { convertJsonSchemaToMongoSchema } from '../src/index';
-import { zodToCompatibleJsonSchema } from '../src/adapters/zod';
+import { convertJsonSchemaToMongoSchema } from '@thaitype/schema-mongo';
+import { zodToCompatibleJsonSchema } from '@thaitype/schema-mongo/adapters/zod';
 
 let mongod: MongoMemoryServer;
 let client: MongoClient;
