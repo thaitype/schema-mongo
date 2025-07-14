@@ -19,11 +19,9 @@ interface ExtendedJsonSchema {
 
 /**
  * Configuration options for custom MongoDB type mapping
- * Supports both legacy string-based configuration and new MongoTypeRegistry
  */
 export interface ZodToMongoOptions {
-  /** @deprecated Use MongoTypeRegistry instead */
-  mongoTypes?: Record<string, 'date' | 'objectId' | (string & {})> | MongoTypeRegistry;
+  mongoTypes?: MongoTypeRegistry;
 }
 
 /**
@@ -81,7 +79,7 @@ export function zodSchema(zodSchema: z.ZodTypeAny, options?: ZodToMongoOptions):
  */
 function processZodType(
   zodType: z.ZodTypeAny,
-  mongoTypes?: Record<string, string> | MongoTypeRegistry
+  mongoTypes?: MongoTypeRegistry
 ): ExtendedJsonSchema {
   const def = zodType._def || (zodType as any).def;
   const zodType_ = def?.type;
@@ -275,65 +273,19 @@ function processZodType(
 
 /**
  * Attempts to find a custom type name by matching the Zod custom validator
- * against the configured mongo types using object identity (for MongoTypeRegistry)
- * or function name matching (for legacy Record<string, string>)
+ * against the configured mongo types using object identity
  */
 function findCustomTypeName(
   zodType: z.ZodTypeAny,
-  mongoTypes: Record<string, string> | MongoTypeRegistry
+  mongoTypes: MongoTypeRegistry
 ): string | undefined {
-  // New approach: MongoTypeRegistry using object identity
-  if (mongoTypes instanceof MongoTypeRegistry) {
-    return mongoTypes.findByValidator(zodType);
-  }
-
-  // Legacy approach: Record<string, string> using function name matching
-  const def = zodType._def || (zodType as any).def;
-  const defAny = def as any;
-
-  // Strategy 1: Check the function name (Zod v4 stores the function in def.fn)
-  if (defAny.fn && typeof defAny.fn === 'function') {
-    const functionName = defAny.fn.name;
-    if (functionName && mongoTypes[functionName]) {
-      return functionName;
-    }
-  }
-
-  // Strategy 2: Check for a custom property on the zodType
-  const customTypeName = (zodType as any).__customTypeName;
-  if (customTypeName && mongoTypes[customTypeName]) {
-    return customTypeName;
-  }
-
-  // Strategy 3: Match function toString() - works for testing
-  if (defAny.fn && typeof defAny.fn === 'function') {
-    const funcString = defAny.fn.toString();
-    for (const typeName of Object.keys(mongoTypes)) {
-      if (funcString.includes(typeName)) {
-        return typeName;
-      }
-    }
-  }
-
-  // Strategy 4: Check legacy def.check for older Zod versions
-  if (defAny.check && typeof defAny.check === 'function') {
-    const functionName = defAny.check.name;
-    if (functionName && mongoTypes[functionName]) {
-      return functionName;
-    }
-  }
-
-  return undefined;
+  return mongoTypes.findByValidator(zodType);
 }
 
 /**
  * Get the BSON type for a custom type name
  */
-function getBsonType(typeName: string, mongoTypes: Record<string, string> | MongoTypeRegistry): string | undefined {
-  if (mongoTypes instanceof MongoTypeRegistry) {
-    const typeInfo = mongoTypes.get(typeName);
-    return typeInfo?.bsonType;
-  }
-
-  return mongoTypes[typeName];
+function getBsonType(typeName: string, mongoTypes: MongoTypeRegistry): string | undefined {
+  const typeInfo = mongoTypes.get(typeName);
+  return typeInfo?.bsonType;
 }

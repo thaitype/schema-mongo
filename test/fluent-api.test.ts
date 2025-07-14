@@ -1,6 +1,7 @@
 import { test, expect } from 'vitest';
 import { z } from 'zod';
 import { ObjectId } from 'mongodb';
+import { MongoTypeRegistry } from '../src/registry/MongoTypeRegistry';
 import { zodSchema } from '../src/adapters/zod.js';
 
 // Custom ObjectId validator - cleaner pattern with named function
@@ -47,15 +48,19 @@ test('zodSchema().toMongoSchema() - basic functionality', () => {
 });
 
 test('zodSchema().toJsonSchema() - with mongo types', () => {
+  const mongoTypes = new MongoTypeRegistry()
+    .register('objectId', {
+      schema: zodObjectId,
+      bsonType: 'objectId'
+    });
+
   const UserSchema = z.object({
     _id: zodObjectId,
     name: z.string(),
     createdAt: z.date()
   });
 
-  const result = zodSchema(UserSchema, {
-    mongoTypes: { zodObjectId: 'objectId' }
-  }).toJsonSchema();
+  const result = zodSchema(UserSchema, { mongoTypes }).toJsonSchema();
 
   expect(result.properties!._id).toEqual({ 
     type: 'string', 
@@ -68,15 +73,19 @@ test('zodSchema().toJsonSchema() - with mongo types', () => {
 });
 
 test('zodSchema().toMongoSchema() - with mongo types', () => {
+  const mongoTypes = new MongoTypeRegistry()
+    .register('objectId', {
+      schema: zodObjectId,
+      bsonType: 'objectId'
+    });
+
   const UserSchema = z.object({
     _id: zodObjectId,
     name: z.string(),
     createdAt: z.date()
   });
 
-  const result = zodSchema(UserSchema, {
-    mongoTypes: { zodObjectId: 'objectId' }
-  }).toMongoSchema();
+  const result = zodSchema(UserSchema, { mongoTypes }).toMongoSchema();
 
   expect(result.properties._id).toEqual({ bsonType: 'objectId' });
   expect(result.properties.createdAt).toEqual({ bsonType: 'date' });
@@ -84,6 +93,12 @@ test('zodSchema().toMongoSchema() - with mongo types', () => {
 });
 
 test('zodSchema().toJsonSchema() - complex nested schema', () => {
+  const mongoTypes = new MongoTypeRegistry()
+    .register('objectId', {
+      schema: zodObjectId,
+      bsonType: 'objectId'
+    });
+
   const UserSchema = z.object({
     _id: zodObjectId,
     profile: z.object({
@@ -95,9 +110,7 @@ test('zodSchema().toJsonSchema() - complex nested schema', () => {
     isActive: z.boolean().default(true)
   });
 
-  const result = zodSchema(UserSchema, {
-    mongoTypes: { zodObjectId: 'objectId' }
-  }).toJsonSchema();
+  const result = zodSchema(UserSchema, { mongoTypes }).toJsonSchema();
 
   expect(result.type).toBe('object');
   expect(result.properties!._id).toEqual({ type: 'string', __mongoType: 'objectId' });
@@ -109,6 +122,12 @@ test('zodSchema().toJsonSchema() - complex nested schema', () => {
 });
 
 test('zodSchema().toMongoSchema() - complex nested schema', () => {
+  const mongoTypes = new MongoTypeRegistry()
+    .register('objectId', {
+      schema: zodObjectId,
+      bsonType: 'objectId'
+    });
+
   const UserSchema = z.object({
     _id: zodObjectId,
     profile: z.object({
@@ -121,9 +140,7 @@ test('zodSchema().toMongoSchema() - complex nested schema', () => {
     createdAt: z.date()
   });
 
-  const result = zodSchema(UserSchema, {
-    mongoTypes: { zodObjectId: 'objectId' }
-  }).toMongoSchema();
+  const result = zodSchema(UserSchema, { mongoTypes }).toMongoSchema();
 
   expect(result.bsonType).toBe('object');
   expect(result.properties._id.bsonType).toBe('objectId');
@@ -171,28 +188,32 @@ test('zodSchema() - multiple mongo types', () => {
     return value instanceof Uint8Array;
   }
 
+  const zodDecimalType = z.custom<string>(zodDecimal);
+  const zodBinaryType = z.custom<Uint8Array>(zodBinary);
+
+  const mongoTypes = new MongoTypeRegistry()
+    .register('objectId', {
+      schema: zodObjectId,
+      bsonType: 'objectId'
+    })
+    .register('decimal', {
+      schema: zodDecimalType,
+      bsonType: 'decimal'
+    })
+    .register('binData', {
+      schema: zodBinaryType,
+      bsonType: 'binData'
+    });
+
   const ProductSchema = z.object({
     _id: zodObjectId,
-    price: z.custom<string>(zodDecimal),
-    thumbnail: z.custom<Uint8Array>(zodBinary),
+    price: zodDecimalType,
+    thumbnail: zodBinaryType,
     createdAt: z.date()
   });
 
-  const jsonResult = zodSchema(ProductSchema, {
-    mongoTypes: {
-      zodObjectId: 'objectId',
-      zodDecimal: 'decimal',
-      zodBinary: 'binData'
-    }
-  }).toJsonSchema();
-
-  const mongoResult = zodSchema(ProductSchema, {
-    mongoTypes: {
-      zodObjectId: 'objectId',
-      zodDecimal: 'decimal',
-      zodBinary: 'binData'
-    }
-  }).toMongoSchema();
+  const jsonResult = zodSchema(ProductSchema, { mongoTypes }).toJsonSchema();
+  const mongoResult = zodSchema(ProductSchema, { mongoTypes }).toMongoSchema();
 
   // JSON Schema assertions
   expect(jsonResult.properties!._id).toEqual({ type: 'string', __mongoType: 'objectId' });
