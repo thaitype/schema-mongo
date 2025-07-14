@@ -2,6 +2,18 @@
 
 This guide covers using `schema-mongo` with [Zod](https://zod.dev) schemas, including supported features, limitations, and best practices for MongoDB validation.
 
+## 🎉 NEW: Date Support
+
+**schema-mongo** now includes a Zod adapter that enables full support for `z.date()` fields! Use `zodToCompatibleJsonSchema()` to convert Zod schemas with dates directly to MongoDB-compatible schemas.
+
+```typescript
+import { zodToCompatibleJsonSchema } from 'schema-mongo/adapters/zod';
+
+const schema = z.object({
+  createdAt: z.date() // ✅ Now works!
+});
+```
+
 ## Table of Contents
 
 - [Quick Start](#quick-start)
@@ -16,17 +28,19 @@ This guide covers using `schema-mongo` with [Zod](https://zod.dev) schemas, incl
 
 ```typescript
 import { z } from 'zod';
+import { zodToCompatibleJsonSchema } from 'schema-mongo/adapters/zod';
 import { convertJsonSchemaToMongoSchema } from 'schema-mongo';
 
 // 1. Define your Zod schema
 const UserSchema = z.object({
   id: z.string(),
   email: z.string(),
+  createdAt: z.date(),  // ✅ Now supported!
   age: z.number().int().min(0).optional()
 });
 
-// 2. Convert to JSON Schema, then to MongoDB schema
-const jsonSchema = z.toJSONSchema(UserSchema);
+// 2. Convert using the Zod adapter, then to MongoDB schema
+const jsonSchema = zodToCompatibleJsonSchema(UserSchema);
 const mongoSchema = convertJsonSchemaToMongoSchema(jsonSchema);
 
 // 3. Use with MongoDB collection validation
@@ -48,6 +62,7 @@ z.boolean()    // → { bsonType: "bool" }
 z.array(T)     // → { bsonType: "array", items: T }
 z.object({})   // → { bsonType: "object", properties: {} }
 z.null()       // → { bsonType: "null" }
+z.date()       // → { bsonType: "date" } ✅ NEW!
 ```
 
 ### ✅ Number Constraints
@@ -125,12 +140,28 @@ z.discriminatedUnion('type', [
 
 ## Limitations & Unsupported Features
 
-### ❌ Unsupported Zod Types
+### ✅ Date Support
 
-These Zod types **cannot** be converted to JSON Schema and will throw an error:
+**NEW**: Date fields are now fully supported using the Zod adapter!
 
 ```typescript
-z.date()        // Use z.string() for ISO date strings instead
+import { zodToCompatibleJsonSchema } from 'schema-mongo/adapters/zod';
+
+const schema = z.object({
+  createdAt: z.date(),           // → { bsonType: "date" }
+  updatedAt: z.date().optional() // → { bsonType: "date" } (optional)
+});
+
+const jsonSchema = zodToCompatibleJsonSchema(schema);
+const mongoSchema = convertJsonSchemaToMongoSchema(jsonSchema);
+// Results in proper MongoDB date validation
+```
+
+### ❌ Unsupported Zod Types
+
+These Zod types **cannot** be converted and will fall back to permissive schemas:
+
+```typescript
 z.bigint()      // Use z.number() or z.string() instead  
 z.symbol()      // Not representable in JSON
 z.map()         // Use z.record() instead
@@ -235,13 +266,34 @@ The following JSON Schema keywords are automatically removed as they're not supp
 
 ## Best Practices
 
-### 1. Keep Schemas Simple
+### 1. Use the Zod Adapter for Date Support
+
+```typescript
+import { zodToCompatibleJsonSchema } from 'schema-mongo/adapters/zod';
+
+// ✅ Good - Use the adapter for date support
+const UserSchema = z.object({
+  id: z.string(),
+  email: z.string(),
+  createdAt: z.date(),             // Properly converted to MongoDB date
+  age: z.number().int().min(0).optional()
+});
+
+const jsonSchema = zodToCompatibleJsonSchema(UserSchema);
+const mongoSchema = convertJsonSchemaToMongoSchema(jsonSchema);
+
+// ❌ Avoid - Using native z.toJSONSchema() with dates
+const jsonSchema = z.toJSONSchema(UserSchema); // Will fail with z.date()
+```
+
+### 2. Keep Schemas Simple
 
 ```typescript
 // ✅ Good - MongoDB compatible
 const UserSchema = z.object({
   id: z.string(),
   email: z.string(),  // Simple validation
+  createdAt: z.date(), // Now supported with adapter!
   age: z.number().int().min(0).optional()
 });
 
@@ -253,7 +305,7 @@ const UserSchema = z.object({
 });
 ```
 
-### 2. Use Explicit Patterns Instead of Formats
+### 3. Use Explicit Patterns Instead of Formats
 
 ```typescript
 // ✅ Good - Pattern preserved
@@ -266,7 +318,7 @@ const EmailSchema = z.string().email();
 const EmailSchema = z.string();  // Validate format in application
 ```
 
-### 3. Handle Optional Fields Correctly
+### 4. Handle Optional Fields Correctly
 
 ```typescript
 // ✅ Good - Clear optionality
@@ -278,7 +330,7 @@ const UserSchema = z.object({
 });
 ```
 
-### 4. Test Your Schemas
+### 5. Test Your Schemas
 
 Always test the full pipeline with actual MongoDB validation:
 
@@ -286,7 +338,7 @@ Always test the full pipeline with actual MongoDB validation:
 import { MongoMemoryServer } from 'mongodb-memory-server';
 
 async function testSchema(zodSchema: z.ZodSchema, validDoc: any, invalidDoc: any) {
-  const jsonSchema = z.toJSONSchema(zodSchema);
+  const jsonSchema = zodToCompatibleJsonSchema(zodSchema);
   const mongoSchema = convertJsonSchemaToMongoSchema(jsonSchema);
   
   // Test with real MongoDB

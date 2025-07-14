@@ -59,19 +59,35 @@ const UNSUPPORTED_KEYWORDS = new Set([
   '$schema',
   'default',
   'format', // MongoDB $jsonSchema doesn't support format validation
-  'additionalProperties' // Can cause issues with complex patterns
+  'additionalProperties', // Can cause issues with complex patterns
+  '__mongoType' // Our custom metadata, processed separately
 ]);
 
 /**
- * Converts a JSON Schema to a MongoDB-compatible $jsonSchema validator
+ * Converts a JSON Schema to a MongoDB-compatible $jsonSchema validator.
+ * Supports extended JSON Schemas with __mongoType metadata for special types like dates.
  * @param schema - The JSON Schema object to convert
  * @returns MongoDB-compatible schema object
  */
 export function convertJsonSchemaToMongoSchema(schema: Record<string, any>): Record<string, any> {
   const result: Record<string, any> = {};
   
-  // Convert type to bsonType
-  if (schema.type) {
+  // Handle special MongoDB types first
+  if (schema.__mongoType) {
+    switch (schema.__mongoType) {
+      case 'date':
+        result.bsonType = 'date';
+        break;
+      case 'objectId':
+        result.bsonType = 'objectId';
+        break;
+      default:
+        console.warn(`Unknown __mongoType: ${schema.__mongoType}`);
+    }
+  }
+  
+  // Convert type to bsonType (skip if we already set bsonType from __mongoType)
+  if (schema.type && !result.bsonType) {
     if (Array.isArray(schema.type)) {
       result.bsonType = schema.type.map(type => TYPE_MAPPING[type] || type);
     } else {
