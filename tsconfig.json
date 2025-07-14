@@ -30,5 +30,18 @@
       "@thaitype/schema-mongo/adapters/zod": ["src/adapters/zod.ts"],
     }
   },
+   "exclude": [
+    "coverage",
+    "vitest.config.ts",
+    "eslint.config.mjs",
+    "scripts",
+    "node_modules",
+    "dist",
+    "doc",
+    "test",
+    "tsconfig.build.json",
+    "src/**/*.spec.ts",
+    "src/**/*.test.ts",
+  ]
 
 }
