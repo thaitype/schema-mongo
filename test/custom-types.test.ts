@@ -166,9 +166,9 @@ test('ignores custom types not in configuration', () => {
     customTypes: { zodObjectId: 'objectId' }
   });
   
-  expect(result.properties._id).toEqual({ type: 'string', __mongoType: 'objectId' });
-  expect(result.properties.unknown).toEqual({}); // Falls back to permissive schema
-  expect(result.properties.name).toEqual({ type: 'string' });
+  expect(result.properties?._id).toEqual({ type: 'string', __mongoType: 'objectId' });
+  expect(result.properties?.unknown).toEqual({}); // Falls back to permissive schema
+  expect(result.properties?.name).toEqual({ type: 'string' });
 });
 
 test('supports nested objects with custom types', () => {
@@ -188,8 +188,8 @@ test('supports nested objects with custom types', () => {
     customTypes: { zodObjectId: 'objectId' }
   });
   
-  expect(result.properties.user.properties._id).toEqual({ type: 'string', __mongoType: 'objectId' });
-  expect(result.properties.user.properties.profile.properties.parentId).toEqual({ type: 'string', __mongoType: 'objectId' });
+  expect(result.properties!.user.properties!._id).toEqual({ type: 'string', __mongoType: 'objectId' });
+  expect(result.properties!.user.properties!.profile.properties!.parentId).toEqual({ type: 'string', __mongoType: 'objectId' });
 });
 
 test('supports arrays with custom types', () => {
@@ -206,7 +206,7 @@ test('supports arrays with custom types', () => {
     customTypes: { zodObjectId: 'objectId' }
   });
   
-  expect(result.properties.items.items.properties._id).toEqual({ type: 'string', __mongoType: 'objectId' });
+  expect(result.properties!.items.items!.properties!._id).toEqual({ type: 'string', __mongoType: 'objectId' });
 });
 
 test('supports custom MongoDB types beyond objectId and date', () => {

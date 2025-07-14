@@ -48,7 +48,7 @@ async function setupMongoValidation() {
   // Test valid document
   try {
     await usersCollection.insertOne({
-      _id: 'user-123',
+      _id: new (require('mongodb')).ObjectId(),
       email: 'john@example.com',
       name: 'John Doe',
       age: 30,
@@ -57,20 +57,20 @@ async function setupMongoValidation() {
     });
     console.log('✅ Valid user document inserted successfully');
   } catch (error) {
-    console.error('❌ Error inserting valid user:', error.message);
+    console.error('❌ Error inserting valid user:', (error as Error).message);
   }
 
   // Test invalid document (missing required field)
   try {
     await usersCollection.insertOne({
-      _id: 'user-456',
+      _id: new (require('mongodb')).ObjectId(),
       // missing email and name
       age: 25,
       createdAt: new Date().toISOString()
     });
     console.log('❌ Invalid document was incorrectly accepted');
   } catch (error) {
-    console.log('✅ Invalid user document correctly rejected:', error.message);
+    console.log('✅ Invalid user document correctly rejected:', (error as Error).message);
   }
 
   // Example 2: Product collection with manual JSON Schema
@@ -114,7 +114,7 @@ async function setupMongoValidation() {
   // Test valid product
   try {
     await productsCollection.insertOne({
-      _id: 'prod-123',
+      _id: new (require('mongodb')).ObjectId(),
       name: 'Laptop',
       price: 999.99,
       category: {
@@ -126,13 +126,13 @@ async function setupMongoValidation() {
     });
     console.log('✅ Valid product document inserted successfully');
   } catch (error) {
-    console.error('❌ Error inserting valid product:', error.message);
+    console.error('❌ Error inserting valid product:', (error as Error).message);
   }
 
   // Test invalid product (negative price)
   try {
     await productsCollection.insertOne({
-      _id: 'prod-456',
+      _id: new (require('mongodb')).ObjectId(),
       name: 'Invalid Item',
       price: -10, // Invalid: negative price
       category: {
@@ -142,7 +142,7 @@ async function setupMongoValidation() {
     });
     console.log('❌ Invalid product was incorrectly accepted');
   } catch (error) {
-    console.log('✅ Invalid product document correctly rejected:', error.message);
+    console.log('✅ Invalid product document correctly rejected:', (error as Error).message);
   }
 
   // Example 3: ObjectId Validation (NEW)
@@ -193,21 +193,21 @@ async function setupMongoValidation() {
     });
     console.log('✅ Valid task with ObjectIds inserted successfully');
   } catch (error) {
-    console.error('❌ Error inserting valid task:', error.message);
+    console.error('❌ Error inserting valid task:', (error as Error).message);
   }
 
   // Test with invalid ObjectId format
   try {
     await tasksCollection.insertOne({
-      _id: 'invalid-objectid-format',  // Invalid ObjectId
+      _id: 'invalid-objectid-format',  // Invalid ObjectId (should stay as string for test)
       title: 'Invalid task',
       assigneeId: new (require('mongodb')).ObjectId(),
       createdAt: new Date(),
       status: 'todo'
-    });
+    } as any);
     console.log('❌ Invalid task was incorrectly accepted');
   } catch (error) {
-    console.log('✅ Invalid ObjectId correctly rejected:', error.message);
+    console.log('✅ Invalid ObjectId correctly rejected:', (error as Error).message);
   }
 
   // Close connection

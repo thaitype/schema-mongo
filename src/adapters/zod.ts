@@ -112,19 +112,20 @@ function processZodType(zodType: z.ZodTypeAny, customTypes?: Record<string, stri
     // Add string constraints
     if (def.checks) {
       for (const check of def.checks) {
-        switch (check.kind) {
+        const checkAny = check as any;
+        switch (checkAny.kind) {
           case 'min':
-            result.minLength = check.value;
+            result.minLength = checkAny.value;
             break;
           case 'max':
-            result.maxLength = check.value;
+            result.maxLength = checkAny.value;
             break;
           case 'length':
-            result.minLength = check.value;
-            result.maxLength = check.value;
+            result.minLength = checkAny.value;
+            result.maxLength = checkAny.value;
             break;
           case 'regex':
-            result.pattern = check.regex.source;
+            result.pattern = checkAny.regex?.source;
             break;
         }
       }
@@ -140,16 +141,17 @@ function processZodType(zodType: z.ZodTypeAny, customTypes?: Record<string, stri
     // Check if it's an integer and handle constraints
     if (def.checks && def.checks.length > 0) {
       for (const check of def.checks) {
+        const checkAny = check as any;
         // Check for integer type
-        if (check.isInt) {
+        if (checkAny.kind === 'int') {
           result.type = 'integer';
         }
         // Handle min/max from check properties
-        if (check.minValue !== undefined && check.minValue > -9007199254740991) {
-          result.minimum = check.minValue;
+        if (checkAny.kind === 'min' && checkAny.value !== undefined && checkAny.value > -9007199254740991) {
+          result.minimum = checkAny.value;
         }
-        if (check.maxValue !== undefined && check.maxValue < 9007199254740991) {
-          result.maximum = check.maxValue;
+        if (checkAny.kind === 'max' && checkAny.value !== undefined && checkAny.value < 9007199254740991) {
+          result.maximum = checkAny.value;
         }
       }
     }
@@ -164,22 +166,29 @@ function processZodType(zodType: z.ZodTypeAny, customTypes?: Record<string, stri
   
   // Handle ZodArray
   if (zodType_ === 'array') {
+    const defAny = def as any;
     const result: ExtendedJsonSchema = {
       type: 'array',
-      items: processZodType(def.element, customTypes)
+      items: processZodType(defAny.type || defAny.element, customTypes)
     };
     
-    // Add array constraints (Zod v4 structure may be different)
-    if (def.minLength !== undefined && def.minLength !== null) {
-      result.minItems = typeof def.minLength === 'object' ? def.minLength.value : def.minLength;
-    }
-    if (def.maxLength !== undefined && def.maxLength !== null) {
-      result.maxItems = typeof def.maxLength === 'object' ? def.maxLength.value : def.maxLength;
-    }
-    if (def.exactLength !== undefined && def.exactLength !== null) {
-      const length = typeof def.exactLength === 'object' ? def.exactLength.value : def.exactLength;
-      result.minItems = length;
-      result.maxItems = length;
+    // Add array constraints from checks array
+    if (defAny.checks) {
+      for (const check of defAny.checks) {
+        const checkAny = check as any;
+        switch (checkAny.kind) {
+          case 'min':
+            result.minItems = checkAny.value;
+            break;
+          case 'max':
+            result.maxItems = checkAny.value;
+            break;
+          case 'length':
+            result.minItems = checkAny.value;
+            result.maxItems = checkAny.value;
+            break;
+        }
+      }
     }
     
     return result;
@@ -187,16 +196,18 @@ function processZodType(zodType: z.ZodTypeAny, customTypes?: Record<string, stri
   
   // Handle ZodObject
   if (zodType_ === 'object') {
+    const defAny = def as any;
     const properties: Record<string, ExtendedJsonSchema> = {};
     const required: string[] = [];
     
-    for (const [key, value] of Object.entries(def.shape)) {
+    const shape = defAny.shape || {};
+    for (const [key, value] of Object.entries(shape)) {
       properties[key] = processZodType(value as z.ZodTypeAny, customTypes);
       
       // Check if field is required (not optional)
       // In Zod v4, we need to check the def structure differently
       const fieldDef = (value as any)._def || (value as any).def;
-      if (!fieldDef || fieldDef.type !== 'optional') {
+      if (!fieldDef || fieldDef.typeName !== 'ZodOptional') {
         required.push(key);
       }
     }
@@ -215,15 +226,17 @@ function processZodType(zodType: z.ZodTypeAny, customTypes?: Record<string, stri
   
   // Handle ZodEnum
   if (zodType_ === 'enum') {
+    const defAny = def as any;
     return {
       type: 'string',
-      enum: Object.values(def.entries)
+      enum: Object.values(defAny.values || defAny.entries || [])
     };
   }
   
   // Handle ZodLiteral
   if (zodType_ === 'literal') {
-    const value = def.values ? def.values[0] : def.value;
+    const defAny = def as any;
+    const value = defAny.value;
     return {
       type: typeof value,
       const: value
@@ -232,33 +245,38 @@ function processZodType(zodType: z.ZodTypeAny, customTypes?: Record<string, stri
   
   // Handle ZodUnion
   if (zodType_ === 'union') {
+    const defAny = def as any;
     return {
-      anyOf: def.options.map((option: z.ZodTypeAny) => processZodType(option, customTypes))
+      anyOf: (defAny.options || []).map((option: z.ZodTypeAny) => processZodType(option, customTypes))
     };
   }
   
   // Handle ZodIntersection
   if (zodType_ === 'intersection') {
+    const defAny = def as any;
     return {
-      allOf: [processZodType(def.left, customTypes), processZodType(def.right, customTypes)]
+      allOf: [processZodType(defAny.left, customTypes), processZodType(defAny.right, customTypes)]
     };
   }
   
   // Handle ZodOptional
   if (zodType_ === 'optional') {
-    return processZodType(def.innerType, customTypes);
+    const defAny = def as any;
+    return processZodType(defAny.innerType, customTypes);
   }
   
   // Handle ZodDefault
   if (zodType_ === 'default') {
-    const result = processZodType(def.innerType, customTypes);
+    const defAny = def as any;
+    const result = processZodType(defAny.innerType, customTypes);
     // Note: We don't include default values as they get stripped by MongoDB converter
     return result;
   }
   
   // Handle ZodNullable
   if (zodType_ === 'nullable') {
-    const innerSchema = processZodType(def.innerType, customTypes);
+    const defAny = def as any;
+    const innerSchema = processZodType(defAny.innerType, customTypes);
     return {
       anyOf: [
         innerSchema,
@@ -274,7 +292,7 @@ function processZodType(zodType: z.ZodTypeAny, customTypes?: Record<string, stri
   
   // Fallback for unsupported types - use native Zod conversion with error handling
   try {
-    return z.toJSONSchema(zodType);
+    return z.toJSONSchema(zodType) as ExtendedJsonSchema;
   } catch (error) {
     // For truly unsupported types, return a permissive schema
     console.warn(`Unsupported Zod type: ${zodType_}. Converting to permissive schema.`);
@@ -288,10 +306,11 @@ function processZodType(zodType: z.ZodTypeAny, customTypes?: Record<string, stri
  */
 function findCustomTypeName(zodType: z.ZodTypeAny, customTypes: Record<string, string>): string | undefined {
   const def = zodType._def || (zodType as any).def;
+  const defAny = def as any;
   
   // Strategy 1: Check the function name (Zod v4 stores the function in def.fn)
-  if (def.fn && typeof def.fn === 'function') {
-    const functionName = def.fn.name;
+  if (defAny.fn && typeof defAny.fn === 'function') {
+    const functionName = defAny.fn.name;
     if (functionName && customTypes[functionName]) {
       return functionName;
     }
@@ -304,8 +323,8 @@ function findCustomTypeName(zodType: z.ZodTypeAny, customTypes: Record<string, s
   }
   
   // Strategy 3: Match function toString() - works for testing
-  if (def.fn && typeof def.fn === 'function') {
-    const funcString = def.fn.toString();
+  if (defAny.fn && typeof defAny.fn === 'function') {
+    const funcString = defAny.fn.toString();
     for (const typeName of Object.keys(customTypes)) {
       if (funcString.includes(typeName)) {
         return typeName;
@@ -314,8 +333,8 @@ function findCustomTypeName(zodType: z.ZodTypeAny, customTypes: Record<string, s
   }
   
   // Strategy 4: Check legacy def.check for older Zod versions
-  if (def.check && typeof def.check === 'function') {
-    const functionName = def.check.name;
+  if (defAny.check && typeof defAny.check === 'function') {
+    const functionName = defAny.check.name;
     if (functionName && customTypes[functionName]) {
       return functionName;
     }

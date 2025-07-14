@@ -16,6 +16,7 @@
     "url": ""
   },
   "scripts": {
+    "test:coverage": "bun test --coverage",
     "test": "bun test",
     "check-types": "tsc --noEmit"
   },
