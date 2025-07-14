@@ -83,7 +83,7 @@ test('should handle complex nested schema validation', async () => {
     properties: {
       _id: { 
         type: 'string', 
-        pattern: '^[0-9a-fA-F]{24}$' 
+        __mongoType: 'objectId' 
       },
       profile: {
         type: 'object',
@@ -130,7 +130,7 @@ test('should handle complex nested schema validation', async () => {
 
   // Invalid document (missing required field)
   const invalidDoc = {
-    _id: new ObjectId('507f1f77bcf86cd799439011'),
+    _id: new ObjectId('507f1f77bcf86cd799439012'),
     profile: {
       // missing required 'name' field
       contacts: []
@@ -204,9 +204,14 @@ test('should validate Zod schema with complex composition', async () => {
 });
 
 test('full pipeline: Zod dates → MongoDB validation with actual Date objects', async () => {
-  // 1. Complex Zod schema with various date scenarios
+  // 1. Define ObjectId validator for proper MongoDB ObjectId type
+  function zodObjectId(value: any): boolean {
+    return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+  }
+
+  // 2. Complex Zod schema with various date scenarios
   const EventSchema = z.object({
-    _id: z.string(),
+    _id: z.custom<string>(zodObjectId),
     title: z.string(),
     startDate: z.date(),           // Required date
     endDate: z.date().optional(),  // Optional date
@@ -225,16 +230,19 @@ test('full pipeline: Zod dates → MongoDB validation with actual Date objects',
     }).optional()
   });
 
-  // 2. Full conversion pipeline
-  const jsonSchema = zodToCompatibleJsonSchema(EventSchema);
+  // 3. Full conversion pipeline with custom types
+  const jsonSchema = zodToCompatibleJsonSchema(EventSchema, {
+    customTypes: { zodObjectId: 'objectId' }
+  });
   const mongoSchema = convertJsonSchemaToMongoSchema(jsonSchema);
 
-  // Verify the schema has proper date types
+  // Verify the schema has proper date and ObjectId types
+  expect(mongoSchema.properties._id.bsonType).toBe('objectId');
   expect(mongoSchema.properties.startDate.bsonType).toBe('date');
   expect(mongoSchema.properties.endDate.bsonType).toBe('date');
   expect(mongoSchema.properties.schedule.properties.createdAt.bsonType).toBe('date');
 
-  // 3. MongoDB collection with validation
+  // 4. MongoDB collection with validation
   await db.createCollection('events', {
     validator: { $jsonSchema: mongoSchema },
     validationAction: 'error',
@@ -243,9 +251,9 @@ test('full pipeline: Zod dates → MongoDB validation with actual Date objects',
 
   const collection = db.collection('events');
 
-  // 4. Test with actual BSON Date objects - should succeed
+  // 5. Test with actual BSON Date objects - should succeed
   const validEvent = {
-    _id: new ObjectId(),
+    _id: new ObjectId(),                          // ObjectId matching schema
     title: 'Test Event',
     startDate: new Date('2025-01-15T10:00:00Z'),  // BSON Date
     endDate: new Date('2025-01-15T12:00:00Z'),    // BSON Date
@@ -266,9 +274,9 @@ test('full pipeline: Zod dates → MongoDB validation with actual Date objects',
 
   await expect(collection.insertOne(validEvent)).resolves.toBeTruthy();
 
-  // 5. Test with minimal required fields (optional dates omitted) - should succeed
+  // 6. Test with minimal required fields (optional dates omitted) - should succeed
   const minimalEvent = {
-    _id: new ObjectId(),
+    _id: new ObjectId(),                          // ObjectId matching schema
     title: 'Minimal Event',
     startDate: new Date('2025-02-01T14:00:00Z'),
     schedule: {
@@ -279,9 +287,9 @@ test('full pipeline: Zod dates → MongoDB validation with actual Date objects',
 
   await expect(collection.insertOne(minimalEvent)).resolves.toBeTruthy();
 
-  // 6. Test validation failures - string instead of Date should fail
+  // 7. Test validation failures - string instead of Date should fail
   const invalidEventWithString = {
-    _id: new ObjectId(),
+    _id: new ObjectId(),                          // ObjectId matching schema
     title: 'Invalid Event',
     startDate: '2025-01-15T10:00:00Z',  // String instead of Date
     schedule: {
@@ -292,9 +300,9 @@ test('full pipeline: Zod dates → MongoDB validation with actual Date objects',
 
   await expect(collection.insertOne(invalidEventWithString)).rejects.toThrow();
 
-  // 7. Test missing required date field should fail
+  // 8. Test missing required date field should fail
   const invalidEventMissingDate = {
-    _id: new ObjectId(), // was 'event-999',
+    _id: new ObjectId(),                          // ObjectId matching schema
     title: 'Missing Date Event',
     // startDate missing (required)
     schedule: {
@@ -305,9 +313,9 @@ test('full pipeline: Zod dates → MongoDB validation with actual Date objects',
 
   await expect(collection.insertOne(invalidEventMissingDate)).rejects.toThrow();
 
-  // 8. Test nested date validation - invalid nested date should fail
+  // 9. Test nested date validation - invalid nested date should fail
   const invalidNestedDate = {
-    _id: new ObjectId(), // was 'event-111',
+    _id: new ObjectId(),                          // ObjectId matching schema
     title: 'Invalid Nested Date',
     startDate: new Date(),
     schedule: {
@@ -318,9 +326,9 @@ test('full pipeline: Zod dates → MongoDB validation with actual Date objects',
 
   await expect(collection.insertOne(invalidNestedDate)).rejects.toThrow();
 
-  // 9. Test array with invalid date should fail
+  // 10. Test array with invalid date should fail
   const invalidArrayDate = {
-    _id: new ObjectId(), // was 'event-222',
+    _id: new ObjectId(),                          // ObjectId matching schema
     title: 'Invalid Array Date',
     startDate: new Date(),
     schedule: {

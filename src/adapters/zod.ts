@@ -114,15 +114,29 @@ function processZodType(zodType: z.ZodTypeAny, customTypes?: Record<string, stri
   if (zodType_ === 'number') {
     const result: ExtendedJsonSchema = { type: 'number' };
     
-    // Check if it's an integer (keep this for basic type detection)
-    if (def.checks && def.checks.length > 0) {
+    // Check if it's an integer - support both Zod v3 and v4 approaches
+    let isInteger = false;
+    
+    // Method 1: Check the isInt property directly (Zod v4)
+    if ((zodType as any).isInt === true) {
+      isInteger = true;
+    }
+    
+    // Method 2: Check in the checks array (Zod v3/v4)
+    if (!isInteger && def.checks && def.checks.length > 0) {
       for (const check of def.checks) {
         const checkAny = check as any;
-        if (checkAny.kind === 'int') {
-          result.type = 'integer';
-          break; // Found integer type, no need to continue
+        const checkDef = checkAny._def || checkAny.def;
+        if (checkAny.kind === 'int' || // Zod v3
+            (checkDef && checkDef.check === 'number_format' && checkDef.format === 'safeint')) { // Zod v4
+          isInteger = true;
+          break;
         }
       }
+    }
+    
+    if (isInteger) {
+      result.type = 'integer';
     }
     
     return result;
@@ -153,9 +167,16 @@ function processZodType(zodType: z.ZodTypeAny, customTypes?: Record<string, stri
       properties[key] = processZodType(value as z.ZodTypeAny, customTypes);
       
       // Check if field is required (not optional)
-      // In Zod v4, we need to check the def structure differently
+      // In Zod v4, we need to check the def structure more carefully
       const fieldDef = (value as any)._def || (value as any).def;
-      if (!fieldDef || fieldDef.typeName !== 'ZodOptional') {
+      const isOptional = fieldDef && (
+        fieldDef.typeName === 'ZodOptional' || 
+        fieldDef.type === 'optional' ||
+        // Handle nested optional structures
+        (fieldDef.innerType && fieldDef.innerType._def && fieldDef.innerType._def.typeName === 'ZodOptional')
+      );
+      
+      if (!isOptional) {
         required.push(key);
       }
     }
@@ -184,7 +205,8 @@ function processZodType(zodType: z.ZodTypeAny, customTypes?: Record<string, stri
   // Handle ZodLiteral
   if (zodType_ === 'literal') {
     const defAny = def as any;
-    const value = defAny.value;
+    // In Zod v4, literal values are stored in the values array
+    const value = defAny.value || (defAny.values && defAny.values[0]);
     return {
       type: typeof value,
       const: value
