@@ -2,21 +2,33 @@
 
 This guide covers using `schema-mongo` with [Zod](https://zod.dev) schemas, including supported features, limitations, and best practices for MongoDB validation.
 
-## 🎉 NEW: Date Support
+## 🎉 NEW: Date & ObjectId Support
 
-**schema-mongo** now includes a Zod adapter that enables full support for `z.date()` fields! Use `zodToCompatibleJsonSchema()` to convert Zod schemas with dates directly to MongoDB-compatible schemas.
+**schema-mongo** now includes a Zod adapter that enables full support for `z.date()` fields and custom MongoDB types like ObjectId! Use `zodToCompatibleJsonSchema()` to convert Zod schemas with dates and custom types directly to MongoDB-compatible schemas.
 
 ```typescript
 import { zodToCompatibleJsonSchema } from 'schema-mongo/adapters/zod';
 
+// ObjectId validation function
+function zodObjectId(value: any): boolean {
+  return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+}
+
 const schema = z.object({
-  createdAt: z.date() // ✅ Now works!
+  _id: z.custom<string>(zodObjectId),  // ✅ ObjectId support!
+  createdAt: z.date()                  // ✅ Date support!
+});
+
+// Configure custom types
+const jsonSchema = zodToCompatibleJsonSchema(schema, {
+  customTypes: { zodObjectId: 'objectId' }
 });
 ```
 
 ## Table of Contents
 
 - [Quick Start](#quick-start)
+- [Custom Types Support](#custom-types-support)
 - [Supported Zod Features](#supported-zod-features)
 - [Limitations & Unsupported Features](#limitations--unsupported-features)
 - [MongoDB-Specific Considerations](#mongodb-specific-considerations)
@@ -31,22 +43,171 @@ import { z } from 'zod';
 import { zodToCompatibleJsonSchema } from 'schema-mongo/adapters/zod';
 import { convertJsonSchemaToMongoSchema } from 'schema-mongo';
 
-// 1. Define your Zod schema
+// 1. Define custom type validators (optional)
+function zodObjectId(value: any): boolean {
+  return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+}
+
+// 2. Define your Zod schema with custom types
 const UserSchema = z.object({
-  id: z.string(),
+  _id: z.custom<string>(zodObjectId),   // ✅ ObjectId with validation!
   email: z.string(),
-  createdAt: z.date(),  // ✅ Now supported!
+  createdAt: z.date(),                  // ✅ Built-in date support!
   age: z.number().int().min(0).optional()
 });
 
-// 2. Convert using the Zod adapter, then to MongoDB schema
-const jsonSchema = zodToCompatibleJsonSchema(UserSchema);
+// 3. Convert using the Zod adapter with custom types configuration
+const jsonSchema = zodToCompatibleJsonSchema(UserSchema, {
+  customTypes: { zodObjectId: 'objectId' }
+});
 const mongoSchema = convertJsonSchemaToMongoSchema(jsonSchema);
 
-// 3. Use with MongoDB collection validation
+// 4. Use with MongoDB collection validation
 await db.createCollection('users', {
   validator: { $jsonSchema: mongoSchema }
 });
+```
+
+## Custom Types Support
+
+### ✅ ObjectId Support
+
+MongoDB ObjectId fields are now fully supported using custom types configuration:
+
+```typescript
+import { z } from 'zod';
+import { zodToCompatibleJsonSchema } from 'schema-mongo/adapters/zod';
+
+// 1. Define ObjectId validation function
+function zodObjectId(value: any): boolean {
+  return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+}
+
+// 2. Use in schema
+const UserSchema = z.object({
+  _id: z.custom<string>(zodObjectId),        // Primary ObjectId
+  parentId: z.custom<string>(zodObjectId).optional(), // Optional ObjectId
+  tags: z.array(z.object({
+    tagId: z.custom<string>(zodObjectId),    // ObjectId in arrays
+    name: z.string()
+  }))
+});
+
+// 3. Configure custom type mapping
+const jsonSchema = zodToCompatibleJsonSchema(UserSchema, {
+  customTypes: { zodObjectId: 'objectId' }
+});
+
+// Results in proper MongoDB ObjectId validation:
+// { _id: { bsonType: 'objectId' }, ... }
+```
+
+### ✅ Custom Date Types
+
+Create stricter date validation beyond built-in `z.date()`:
+
+```typescript
+// Custom date validator
+function zodStrictDate(value: any): boolean {
+  return value instanceof Date && !isNaN(value.getTime());
+}
+
+const EventSchema = z.object({
+  startDate: z.date(),                        // Built-in date → bsonType: 'date'
+  endDate: z.custom<Date>(zodStrictDate),     // Custom date → bsonType: 'date'
+  createdAt: z.date().optional()
+});
+
+const jsonSchema = zodToCompatibleJsonSchema(EventSchema, {
+  customTypes: { zodStrictDate: 'date' }
+});
+```
+
+### ✅ Extensible MongoDB Types
+
+Support any MongoDB BSON type using the same pattern:
+
+```typescript
+// Custom decimal validator
+function zodDecimal(value: any): boolean {
+  return typeof value === 'string' && /^\d+\.\d+$/.test(value);
+}
+
+// Custom binary data validator
+function zodBinary(value: any): boolean {
+  return value instanceof Uint8Array;
+}
+
+const ProductSchema = z.object({
+  price: z.custom<string>(zodDecimal),
+  thumbnail: z.custom<Uint8Array>(zodBinary),
+  metadata: z.record(z.unknown())
+});
+
+const jsonSchema = zodToCompatibleJsonSchema(ProductSchema, {
+  customTypes: {
+    zodDecimal: 'decimal',
+    zodBinary: 'binData'
+  }
+});
+
+// Results in:
+// { price: { bsonType: 'decimal' }, thumbnail: { bsonType: 'binData' } }
+```
+
+### 🔧 Configuration API
+
+The `zodToCompatibleJsonSchema` function accepts an optional configuration object:
+
+```typescript
+interface ZodToMongoOptions {
+  customTypes?: Record<string, 'date' | 'objectId' | string>;
+}
+
+// Function name → MongoDB BSON type mapping
+const options: ZodToMongoOptions = {
+  customTypes: {
+    zodObjectId: 'objectId',    // Maps zodObjectId function to ObjectId
+    zodStrictDate: 'date',      // Maps zodStrictDate function to Date
+    zodDecimal: 'decimal',      // Maps zodDecimal function to Decimal128
+    zodBinary: 'binData'        // Maps zodBinary function to BinData
+  }
+};
+```
+
+### 🔍 Function Detection
+
+The adapter detects custom types by matching function names:
+
+```typescript
+// ✅ Good - Named function, detectable
+function zodObjectId(value: any): boolean {
+  return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+}
+
+// ❌ Avoid - Anonymous function, not detectable
+const schema = z.object({
+  _id: z.custom<string>((value) => /^[0-9a-fA-F]{24}$/.test(value))
+});
+
+// ✅ Alternative - Assign to named variable
+const objectIdValidator = (value: any): boolean => {
+  return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+};
+```
+
+### 🔄 Backward Compatibility
+
+Custom types are completely optional. Existing code continues to work:
+
+```typescript
+// This still works without any changes
+const schema = z.object({
+  name: z.string(),
+  createdAt: z.date()  // Built-in date support
+});
+
+const jsonSchema = zodToCompatibleJsonSchema(schema); // No options needed
 ```
 
 ## Supported Zod Features
@@ -62,7 +223,11 @@ z.boolean()    // → { bsonType: "bool" }
 z.array(T)     // → { bsonType: "array", items: T }
 z.object({})   // → { bsonType: "object", properties: {} }
 z.null()       // → { bsonType: "null" }
-z.date()       // → { bsonType: "date" } ✅ NEW!
+z.date()       // → { bsonType: "date" } ✅ Built-in support!
+
+// Custom types with configuration ✅ NEW!
+z.custom(zodObjectId)  // → { bsonType: "objectId" } (with customTypes config)
+z.custom(zodDecimal)   // → { bsonType: "decimal" } (with customTypes config)
 ```
 
 ### ✅ Number Constraints
@@ -157,6 +322,22 @@ const mongoSchema = convertJsonSchemaToMongoSchema(jsonSchema);
 // Results in proper MongoDB date validation
 ```
 
+### ✅ Custom Types (NEW!)
+
+Custom types are now supported with configuration:
+
+```typescript
+// ✅ Supported with customTypes configuration
+function zodObjectId(value: any): boolean {
+  return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+}
+
+z.custom<string>(zodObjectId)  // → { bsonType: "objectId" } with config
+
+// ❌ Unsupported without configuration
+z.custom((value) => someComplexValidation(value))  // → {} (permissive schema)
+```
+
 ### ❌ Unsupported Zod Types
 
 These Zod types **cannot** be converted and will fall back to permissive schemas:
@@ -167,7 +348,6 @@ z.symbol()      // Not representable in JSON
 z.map()         // Use z.record() instead
 z.set()         // Use z.array() with uniqueItems instead
 z.transform()   // Transformations don't exist in JSON Schema
-z.custom()      // Custom validations not supported
 z.nan()         // Not meaningful in JSON Schema
 z.void()        // Not meaningful in JSON Schema
 ```
@@ -263,37 +443,76 @@ The following JSON Schema keywords are automatically removed as they're not supp
 | `z.boolean()` | `{ type: "boolean" }` | `{ bsonType: "bool" }` |
 | `z.array()` | `{ type: "array" }` | `{ bsonType: "array" }` |
 | `z.object()` | `{ type: "object" }` | `{ bsonType: "object" }` |
+| `z.date()` | `{ type: "string", __mongoType: "date" }` | `{ bsonType: "date" }` |
+| `z.custom(zodObjectId)*` | `{ type: "string", __mongoType: "objectId" }` | `{ bsonType: "objectId" }` |
+
+*Requires `customTypes` configuration
 
 ## Best Practices
 
-### 1. Use the Zod Adapter for Date Support
+### 1. Use the Zod Adapter for Date & ObjectId Support
 
 ```typescript
 import { zodToCompatibleJsonSchema } from 'schema-mongo/adapters/zod';
 
-// ✅ Good - Use the adapter for date support
+// ObjectId validator
+function zodObjectId(value: any): boolean {
+  return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+}
+
+// ✅ Good - Use the adapter for date and ObjectId support
 const UserSchema = z.object({
-  id: z.string(),
+  _id: z.custom<string>(zodObjectId),  // Proper ObjectId validation
   email: z.string(),
-  createdAt: z.date(),             // Properly converted to MongoDB date
+  createdAt: z.date(),                 // Properly converted to MongoDB date
   age: z.number().int().min(0).optional()
 });
 
-const jsonSchema = zodToCompatibleJsonSchema(UserSchema);
+const jsonSchema = zodToCompatibleJsonSchema(UserSchema, {
+  customTypes: { zodObjectId: 'objectId' }
+});
 const mongoSchema = convertJsonSchemaToMongoSchema(jsonSchema);
 
 // ❌ Avoid - Using native z.toJSONSchema() with dates
 const jsonSchema = z.toJSONSchema(UserSchema); // Will fail with z.date()
 ```
 
-### 2. Keep Schemas Simple
+### 2. Use Named Functions for Custom Types
 
 ```typescript
-// ✅ Good - MongoDB compatible
+// ✅ Good - Named function, easily detectable
+function zodObjectId(value: any): boolean {
+  return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+}
+
+function zodDecimal(value: any): boolean {
+  return typeof value === 'string' && /^\d+\.\d+$/.test(value);
+}
+
+const ProductSchema = z.object({
+  _id: z.custom<string>(zodObjectId),
+  price: z.custom<string>(zodDecimal)
+});
+
+// ❌ Avoid - Anonymous functions not detectable
+const ProductSchema = z.object({
+  _id: z.custom<string>((v) => /^[0-9a-fA-F]{24}$/.test(v)),  // Won't work
+  price: z.custom<string>((v) => /^\d+\.\d+$/.test(v))        // Won't work
+});
+```
+
+### 3. Keep Schemas Simple
+
+```typescript
+// ✅ Good - MongoDB compatible with ObjectId
+function zodObjectId(value: any): boolean {
+  return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+}
+
 const UserSchema = z.object({
-  id: z.string(),
-  email: z.string(),  // Simple validation
-  createdAt: z.date(), // Now supported with adapter!
+  _id: z.custom<string>(zodObjectId),  // Proper ObjectId
+  email: z.string(),                   // Simple validation
+  createdAt: z.date(),                 // Built-in date support
   age: z.number().int().min(0).optional()
 });
 
@@ -305,11 +524,17 @@ const UserSchema = z.object({
 });
 ```
 
-### 3. Use Explicit Patterns Instead of Formats
+### 4. Prefer Custom Types for MongoDB-Specific Validation
 
 ```typescript
-// ✅ Good - Pattern preserved
-const ObjectIdSchema = z.string().regex(/^[0-9a-fA-F]{24}$/);
+// ✅ Best - Custom ObjectId type with proper MongoDB validation
+function zodObjectId(value: any): boolean {
+  return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+}
+const _id = z.custom<string>(zodObjectId);  // → { bsonType: "objectId" }
+
+// ✅ Good - Pattern preserved but still string type
+const _id = z.string().regex(/^[0-9a-fA-F]{24}$/);  // → { bsonType: "string", pattern: "..." }
 
 // ❌ Avoid - Format stripped
 const EmailSchema = z.string().email();
@@ -318,7 +543,7 @@ const EmailSchema = z.string().email();
 const EmailSchema = z.string();  // Validate format in application
 ```
 
-### 4. Handle Optional Fields Correctly
+### 5. Handle Optional Fields Correctly
 
 ```typescript
 // ✅ Good - Clear optionality
@@ -330,7 +555,7 @@ const UserSchema = z.object({
 });
 ```
 
-### 5. Test Your Schemas
+### 6. Test Your Schemas
 
 Always test the full pipeline with actual MongoDB validation:
 
@@ -370,6 +595,62 @@ async function testSchema(zodSchema: z.ZodSchema, validDoc: any, invalidDoc: any
 ```
 
 ## Troubleshooting
+
+### Custom Type Detection Issues
+
+**Problem**: Custom types not being detected or converted properly
+
+**Solutions**:
+1. Ensure you're using named functions:
+   ```typescript
+   // ✅ Good - Named function
+   function zodObjectId(value: any): boolean {
+     return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+   }
+   
+   // ❌ Bad - Anonymous function
+   z.custom((value) => /^[0-9a-fA-F]{24}$/.test(value))
+   ```
+
+2. Check your customTypes configuration:
+   ```typescript
+   const jsonSchema = zodToCompatibleJsonSchema(schema, {
+     customTypes: { 
+       zodObjectId: 'objectId'  // Function name must match exactly
+     }
+   });
+   ```
+
+3. Debug the detection:
+   ```typescript
+   // Add logging to see if custom types are detected
+   console.log('JSON Schema:', JSON.stringify(jsonSchema, null, 2));
+   // Look for __mongoType properties
+   ```
+
+### ObjectId Validation Errors
+
+**Problem**: MongoDB rejects ObjectId values unexpectedly
+
+**Solutions**:
+1. Ensure you're using proper BSON ObjectId objects:
+   ```typescript
+   import { ObjectId } from 'mongodb';
+   
+   // ✅ Good - BSON ObjectId
+   const doc = { _id: new ObjectId() };
+   
+   // ❌ Bad - String that looks like ObjectId
+   const doc = { _id: '507f1f77bcf86cd799439011' };
+   ```
+
+2. Check ObjectId format validation:
+   ```typescript
+   function zodObjectId(value: any): boolean {
+     // Make sure this matches MongoDB's ObjectId format exactly
+     return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+   }
+   ```
 
 ### Schema Validation Errors
 
@@ -427,16 +708,22 @@ z.string()  // Validate email format in application layer
 
 ## Examples
 
-### Complete User Management Example
+### Complete User Management Example with ObjectId
 
 ```typescript
 import { z } from 'zod';
+import { zodToCompatibleJsonSchema } from 'schema-mongo/adapters/zod';
 import { convertJsonSchemaToMongoSchema } from 'schema-mongo';
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 
-// Define schemas
+// Define custom ObjectId validator
+function zodObjectId(value: any): boolean {
+  return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+}
+
+// Define schemas with ObjectId and Date support
 const UserSchema = z.object({
-  _id: z.string(),
+  _id: z.custom<string>(zodObjectId),           // MongoDB ObjectId
   email: z.string(),
   profile: z.object({
     firstName: z.string().min(1),
@@ -445,15 +732,19 @@ const UserSchema = z.object({
     preferences: z.object({
       newsletter: z.boolean().default(false),
       theme: z.enum(['light', 'dark']).default('light')
-    })
+    }),
+    avatarId: z.custom<string>(zodObjectId).optional()  // Optional ObjectId
   }),
   roles: z.array(z.enum(['admin', 'user', 'moderator'])).min(1),
-  createdAt: z.string(),  // ISO date string
-  lastLogin: z.string().optional()
+  createdAt: z.date(),                          // MongoDB Date
+  lastLogin: z.date().optional(),               // Optional Date
+  teamIds: z.array(z.custom<string>(zodObjectId)).optional()  // Array of ObjectIds
 });
 
-// Convert to MongoDB schema
-const jsonSchema = z.toJSONSchema(UserSchema);
+// Convert to MongoDB schema with custom types
+const jsonSchema = zodToCompatibleJsonSchema(UserSchema, {
+  customTypes: { zodObjectId: 'objectId' }
+});
 const mongoSchema = convertJsonSchemaToMongoSchema(jsonSchema);
 
 // Setup MongoDB validation
@@ -465,9 +756,9 @@ async function setupUserCollection(db: Db) {
   });
 }
 
-// Usage
+// Usage with proper BSON types
 const validUser = {
-  _id: 'user_123',
+  _id: new ObjectId(),                          // BSON ObjectId
   email: 'john@example.com',
   profile: {
     firstName: 'John',
@@ -476,14 +767,131 @@ const validUser = {
     preferences: {
       newsletter: true,
       theme: 'dark' as const
-    }
+    },
+    avatarId: new ObjectId()                    // BSON ObjectId
   },
   roles: ['user' as const],
-  createdAt: new Date().toISOString()
+  createdAt: new Date(),                        // BSON Date
+  lastLogin: new Date(),                        // BSON Date
+  teamIds: [new ObjectId(), new ObjectId()]     // Array of BSON ObjectIds
 };
 
 // This will pass validation ✅
 await users.insertOne(validUser);
+```
+
+### Mixed Custom Types Example
+
+```typescript
+// Define multiple custom validators
+function zodObjectId(value: any): boolean {
+  return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+}
+
+function zodDecimal(value: any): boolean {
+  return typeof value === 'string' && /^\d+\.\d+$/.test(value);
+}
+
+const ProductSchema = z.object({
+  _id: z.custom<string>(zodObjectId),
+  categoryId: z.custom<string>(zodObjectId),
+  name: z.string(),
+  price: z.custom<string>(zodDecimal),          // Decimal128 for precise currency
+  createdAt: z.date(),
+  tags: z.array(z.object({
+    tagId: z.custom<string>(zodObjectId),
+    name: z.string()
+  }))
+});
+
+const jsonSchema = zodToCompatibleJsonSchema(ProductSchema, {
+  customTypes: {
+    zodObjectId: 'objectId',
+    zodDecimal: 'decimal'
+  }
+});
+
+// Results in proper MongoDB types:
+// _id: { bsonType: 'objectId' }
+// categoryId: { bsonType: 'objectId' }
+// price: { bsonType: 'decimal' }
+// createdAt: { bsonType: 'date' }
+// tags.items.properties.tagId: { bsonType: 'objectId' }
+```
+
+### Integration Testing with ObjectId & Dates
+
+```typescript
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import { MongoClient, ObjectId } from 'mongodb';
+
+async function testObjectIdSchema() {
+  // 1. Define schema with ObjectId and Date
+  function zodObjectId(value: any): boolean {
+    return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+  }
+
+  const UserSchema = z.object({
+    _id: z.custom<string>(zodObjectId),
+    name: z.string(),
+    createdAt: z.date(),
+    parentId: z.custom<string>(zodObjectId).optional()
+  });
+
+  // 2. Convert with custom types configuration
+  const jsonSchema = zodToCompatibleJsonSchema(UserSchema, {
+    customTypes: { zodObjectId: 'objectId' }
+  });
+  const mongoSchema = convertJsonSchemaToMongoSchema(jsonSchema);
+
+  // 3. Test with real MongoDB
+  const mongod = await MongoMemoryServer.create();
+  const client = new MongoClient(mongod.getUri());
+  await client.connect();
+  
+  const db = client.db('test');
+  await db.createCollection('users', {
+    validator: { $jsonSchema: mongoSchema },
+    validationAction: 'error'
+  });
+  
+  const collection = db.collection('users');
+
+  // 4. Valid document with proper BSON types - should succeed
+  const validUser = {
+    _id: new ObjectId(),        // BSON ObjectId
+    name: 'John Doe',
+    createdAt: new Date(),      // BSON Date
+    parentId: new ObjectId()    // BSON ObjectId
+  };
+  
+  await collection.insertOne(validUser);  // ✅ Success
+
+  // 5. Invalid document - should fail
+  try {
+    await collection.insertOne({
+      _id: 'invalid-id',        // Invalid ObjectId format
+      name: 'Jane Doe',
+      createdAt: new Date()
+    });
+  } catch (error) {
+    console.log('✅ Validation correctly rejected invalid ObjectId');
+  }
+
+  // 6. Invalid date - should fail  
+  try {
+    await collection.insertOne({
+      _id: new ObjectId(),
+      name: 'Bob Smith',
+      createdAt: 'invalid-date' // String instead of Date
+    });
+  } catch (error) {
+    console.log('✅ Validation correctly rejected invalid Date');
+  }
+
+  await client.close();
+  await mongod.stop();
+}
 ```
 
 ### Union Types Example
