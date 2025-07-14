@@ -18,16 +18,23 @@ A framework-agnostic library for converting validation schemas to MongoDB-compat
 
 ```typescript
 import { z } from 'zod';
+import { ObjectId } from 'mongodb';
+import { CustomTypeRegistry } from '@thaitype/schema-mongo';
 import { zodSchema } from '@thaitype/schema-mongo/adapters/zod';
 
-// Define ObjectId validator
-function zodObjectId(value: any): boolean {
-  return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
-}
+// Define ObjectId validator with clean syntax
+const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
+
+// Create type-safe CustomTypeRegistry
+const customTypes = new CustomTypeRegistry()
+  .add('objectId', {
+    validate: zodObjectId,
+    bsonType: 'objectId'
+  });
 
 // Create Zod schema with custom types
 const UserSchema = z.object({
-  _id: z.custom<string>(zodObjectId),
+  _id: zodObjectId,
   name: z.string(),
   email: z.string(),
   createdAt: z.date(),
@@ -35,9 +42,7 @@ const UserSchema = z.object({
 });
 
 // Convert to MongoDB schema (one-liner!)
-const mongoSchema = zodSchema(UserSchema, {
-  customTypes: { zodObjectId: 'objectId' }
-}).toMongoSchema();
+const mongoSchema = zodSchema(UserSchema, { customTypes }).toMongoSchema();
 
 // Use with MongoDB collection validation
 await db.createCollection('users', {
@@ -89,47 +94,55 @@ const mongoSchema = zodSchema(zodSchema).toMongoSchema();
 
 ## Custom Types
 
-The library includes a powerful custom type system for MongoDB-specific types:
+The library features a type-safe CustomTypeRegistry system leveraging StandardSchemaV1 for MongoDB-specific types:
 
 ### ObjectId Support
 ```typescript
-function zodObjectId(value: any): boolean {
-  return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
-}
+import { ObjectId } from 'mongodb';
+import { CustomTypeRegistry } from '@thaitype/schema-mongo';
+
+// Clean, modern ObjectId validation
+const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
+
+const customTypes = new CustomTypeRegistry()
+  .add('objectId', {
+    validate: zodObjectId,
+    bsonType: 'objectId'
+  });
 
 const schema = z.object({
-  _id: z.custom<string>(zodObjectId),
-  userId: z.custom<string>(zodObjectId)
+  _id: zodObjectId,
+  userId: zodObjectId
 });
 
-const mongoSchema = zodSchema(schema, {
-  customTypes: { zodObjectId: 'objectId' }
-}).toMongoSchema();
+const mongoSchema = zodSchema(schema, { customTypes }).toMongoSchema();
 // Results in: { _id: { bsonType: 'objectId' }, userId: { bsonType: 'objectId' } }
 ```
 
 ### Multiple Custom Types
 ```typescript
-function zodObjectId(value: any): boolean {
-  return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
-}
+// Define custom validators
+const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
+const zodDecimal = z.custom<string>(value => /^\d+\.\d+$/.test(value));
 
-function zodDecimal(value: any): boolean {
-  return typeof value === 'string' && /^\d+\.\d+$/.test(value);
-}
+// Type-safe registry with method chaining
+const customTypes = new CustomTypeRegistry()
+  .add('objectId', {
+    validate: zodObjectId,
+    bsonType: 'objectId'
+  })
+  .add('decimal', {
+    validate: zodDecimal,
+    bsonType: 'decimal'
+  });
 
 const ProductSchema = z.object({
-  _id: z.custom<string>(zodObjectId),
-  price: z.custom<string>(zodDecimal),
+  _id: zodObjectId,
+  price: zodDecimal,
   createdAt: z.date()
 });
 
-const mongoSchema = zodSchema(ProductSchema, {
-  customTypes: {
-    zodObjectId: 'objectId',
-    zodDecimal: 'decimal'
-  }
-}).toMongoSchema();
+const mongoSchema = zodSchema(ProductSchema, { customTypes }).toMongoSchema();
 ```
 
 ### Supported MongoDB Types
@@ -154,7 +167,7 @@ Converts a Zod schema to MongoDB format using the fluent API.
 #### Options
 ```typescript
 interface ZodToMongoOptions {
-  customTypes?: Record<string, string>;
+  customTypes?: CustomTypeRegistry | Record<string, string>; // New: CustomTypeRegistry support
 }
 ```
 
@@ -221,8 +234,13 @@ const AddressSchema = z.object({
   zipCode: z.string()
 });
 
+// Define custom types once
+const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
+const customTypes = new CustomTypeRegistry()
+  .add('objectId', { validate: zodObjectId, bsonType: 'objectId' });
+
 const UserSchema = z.object({
-  _id: z.custom<string>(zodObjectId),
+  _id: zodObjectId,
   profile: z.object({
     name: z.string(),
     address: AddressSchema
@@ -234,9 +252,7 @@ const UserSchema = z.object({
   createdAt: z.date()
 });
 
-const mongoSchema = zodSchema(UserSchema, {
-  customTypes: { zodObjectId: 'objectId' }
-}).toMongoSchema();
+const mongoSchema = zodSchema(UserSchema, { customTypes }).toMongoSchema();
 ```
 
 ## Limitations
@@ -257,17 +273,20 @@ const result = UserSchema.parse(userData);
 const mongoSchema = zodSchema(UserSchema).toMongoSchema();
 ```
 
-### Custom Type Requirements
-Custom types require named functions for detection:
+### CustomTypeRegistry Benefits
+The modern CustomTypeRegistry approach provides:
+
+✅ **Type Safety**: Full TypeScript inference with StandardSchemaV1 compliance  
+✅ **Clean Syntax**: Arrow functions work perfectly - no function naming required  
+✅ **Object Identity**: Uses `===` comparison instead of fragile function name matching  
+✅ **Method Chaining**: Fluent API with `.add().add()` pattern  
+✅ **Standards Compliant**: Built on StandardSchemaV1 for future compatibility  
 
 ```typescript
-// ✅ Good - Named function
-function zodObjectId(value: any): boolean {
-  return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
-}
-
-// ❌ Won't work - Anonymous function
-z.custom((value) => /^[0-9a-fA-F]{24}$/.test(value))
+// ✅ Modern approach - Clean and type-safe
+const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
+const customTypes = new CustomTypeRegistry()
+  .add('objectId', { validate: zodObjectId, bsonType: 'objectId' });
 ```
 
 ## Contributing
