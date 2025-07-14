@@ -1,6 +1,7 @@
 {
   "name": "@thaitype/schema-mongo",
   "version": "0.0.0",
+  "type": "module",
   "description": "Framework-agnostic library for converting validation schemas to MongoDB format with custom types",
   "main": "./dist/main.cjs",
   "module": "./dist/main.js",
@@ -16,6 +17,8 @@
     "start": "tsx src/main.ts",
     "dev": "tsx watch src/main.ts",
     "test:coverage": "vitest run --coverage",
+    "test:coverage:report": "npx uncoverage coverage/coverage-final.json --print",
+    "test:coverage:feedback": "run-s test:coverage test:coverage:report",
     "test": "vitest",
     "test:ci": "vitest run",
     "build": "tsup src/main.ts --dts --format esm,cjs",
@@ -26,16 +29,17 @@
   "devDependencies": {
     "@eslint/js": "^9.23.0",
     "@typescript-eslint/eslint-plugin": "^8.27.0",
-    "@vitest/coverage-v8": "^3.0.9",
+    "@vitest/coverage-istanbul": "^3.2.4",
     "eslint": "^9.23.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-only-warn": "^1.1.0",
+    "npm-run-all2": "^8.0.4",
     "prettier": "^3.5.3",
     "tsup": "^8.4.0",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2",
     "typescript-eslint": "^8.27.0",
-    "vitest": "^3.0.9"
+    "vitest": "^3.2.4"
   },
   "keywords": [],
   "author": "Thada Wangthammang",
