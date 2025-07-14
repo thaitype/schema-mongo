@@ -107,51 +107,20 @@ function processZodType(zodType: z.ZodTypeAny, customTypes?: Record<string, stri
   
   // Handle ZodString
   if (zodType_ === 'string') {
-    const result: ExtendedJsonSchema = { type: 'string' };
-    
-    // Add string constraints
-    if (def.checks) {
-      for (const check of def.checks) {
-        const checkAny = check as any;
-        switch (checkAny.kind) {
-          case 'min':
-            result.minLength = checkAny.value;
-            break;
-          case 'max':
-            result.maxLength = checkAny.value;
-            break;
-          case 'length':
-            result.minLength = checkAny.value;
-            result.maxLength = checkAny.value;
-            break;
-          case 'regex':
-            result.pattern = checkAny.regex?.source;
-            break;
-        }
-      }
-    }
-    
-    return result;
+    return { type: 'string' };
   }
   
   // Handle ZodNumber
   if (zodType_ === 'number') {
     const result: ExtendedJsonSchema = { type: 'number' };
     
-    // Check if it's an integer and handle constraints
+    // Check if it's an integer (keep this for basic type detection)
     if (def.checks && def.checks.length > 0) {
       for (const check of def.checks) {
         const checkAny = check as any;
-        // Check for integer type
         if (checkAny.kind === 'int') {
           result.type = 'integer';
-        }
-        // Handle min/max from check properties
-        if (checkAny.kind === 'min' && checkAny.value !== undefined && checkAny.value > -9007199254740991) {
-          result.minimum = checkAny.value;
-        }
-        if (checkAny.kind === 'max' && checkAny.value !== undefined && checkAny.value < 9007199254740991) {
-          result.maximum = checkAny.value;
+          break; // Found integer type, no need to continue
         }
       }
     }
@@ -167,31 +136,10 @@ function processZodType(zodType: z.ZodTypeAny, customTypes?: Record<string, stri
   // Handle ZodArray
   if (zodType_ === 'array') {
     const defAny = def as any;
-    const result: ExtendedJsonSchema = {
+    return {
       type: 'array',
-      items: processZodType(defAny.type || defAny.element, customTypes)
+      items: processZodType(defAny.element, customTypes)
     };
-    
-    // Add array constraints from checks array
-    if (defAny.checks) {
-      for (const check of defAny.checks) {
-        const checkAny = check as any;
-        switch (checkAny.kind) {
-          case 'min':
-            result.minItems = checkAny.value;
-            break;
-          case 'max':
-            result.maxItems = checkAny.value;
-            break;
-          case 'length':
-            result.minItems = checkAny.value;
-            result.maxItems = checkAny.value;
-            break;
-        }
-      }
-    }
-    
-    return result;
   }
   
   // Handle ZodObject

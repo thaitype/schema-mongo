@@ -206,7 +206,10 @@ test('supports arrays with custom types', () => {
     customTypes: { zodObjectId: 'objectId' }
   });
   
+  expect(result.properties!.items.type).toBe('array');
+  expect(result.properties!.items.items!.type).toBe('object');
   expect(result.properties!.items.items!.properties!._id).toEqual({ type: 'string', __mongoType: 'objectId' });
+  expect(result.properties!.items.items!.properties!.name).toEqual({ type: 'string' });
 });
 
 test('supports custom MongoDB types beyond objectId and date', () => {
