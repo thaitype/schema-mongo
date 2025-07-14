@@ -279,7 +279,7 @@ The modern MongoTypeRegistry approach provides:
 ✅ **Type Safety**: Full TypeScript inference with StandardSchemaV1 compliance  
 ✅ **Clean Syntax**: Arrow functions work perfectly - no function naming required  
 ✅ **Object Identity**: Uses `===` comparison instead of fragile function name matching  
-✅ **Method Chaining**: Fluent API with `.add().add()` pattern  
+✅ **Method Chaining**: Fluent API with `.register().register()` pattern  
 ✅ **Standards Compliant**: Built on StandardSchemaV1 for future compatibility  
 
 ```typescript

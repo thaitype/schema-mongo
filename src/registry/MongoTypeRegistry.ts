@@ -25,12 +25,12 @@ export interface MongoTypeInfo<S extends StandardSchemaV1 = StandardSchemaV1> {
  * const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
  *
  * const mongoTypes = new MongoTypeRegistry()
- *   .add('objectId', {
- *     validate: zodObjectId,
+ *   .register('objectId', {
+ *     schema: zodObjectId,
  *     bsonType: 'objectId'
  *   })
- *   .add('date', {
- *     validate: z.date(),
+ *   .register('date', {
+ *     schema: z.date(),
  *     bsonType: 'date'
  *   });
  * ```

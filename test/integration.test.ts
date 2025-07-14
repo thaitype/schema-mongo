@@ -209,8 +209,8 @@ test('full pipeline: Zod dates → MongoDB validation with actual Date objects',
   
   // 2. Create type-safe custom type registry
   const mongoTypes = new MongoTypeRegistry()
-    .add('objectId', {
-      validate: zodObjectId,
+    .register('objectId', {
+      schema: zodObjectId,
       bsonType: 'objectId'
     });
 
@@ -387,12 +387,12 @@ test('full pipeline: ObjectId + Date custom types → MongoDB validation', async
 
   // 3. Convert using custom types registry
   const mongoTypes = new MongoTypeRegistry()
-    .add('objectId', {
-      validate: zodObjectId,
+    .register('objectId', {
+      schema: zodObjectId,
       bsonType: 'objectId'
     })
-    .add('strictDate', {
-      validate: zodStrictDateType,
+    .register('strictDate', {
+      schema: zodStrictDateType,
       bsonType: 'date'
     });
   

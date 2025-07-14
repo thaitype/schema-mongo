@@ -15,8 +15,8 @@ const zodStrictDateType = z.custom<Date>(zodStrictDate);
 
 test('supports custom ObjectId type with MongoTypeRegistry', () => {
   const mongoTypes = new MongoTypeRegistry()
-    .add('objectId', {
-      validate: zodObjectId,
+    .register('objectId', {
+      schema: zodObjectId,
       bsonType: 'objectId'
     });
 
@@ -41,8 +41,8 @@ test('supports custom ObjectId type with MongoTypeRegistry', () => {
 
 test('supports custom date type with MongoTypeRegistry', () => {
   const mongoTypes = new MongoTypeRegistry()
-    .add('strictDate', {
-      validate: zodStrictDateType,
+    .register('strictDate', {
+      schema: zodStrictDateType,
       bsonType: 'date'
     });
 
@@ -69,12 +69,12 @@ test('supports custom date type with MongoTypeRegistry', () => {
 
 test('supports multiple custom types in same registry', () => {
   const mongoTypes = new MongoTypeRegistry()
-    .add('objectId', {
-      validate: zodObjectId,
+    .register('objectId', {
+      schema: zodObjectId,
       bsonType: 'objectId'
     })
-    .add('strictDate', {
-      validate: zodStrictDateType,
+    .register('strictDate', {
+      schema: zodStrictDateType,
       bsonType: 'date'
     });
 
@@ -105,12 +105,12 @@ test('supports multiple custom types in same registry', () => {
 
 test('full pipeline: MongoTypeRegistry → MongoDB schema', () => {
   const mongoTypes = new MongoTypeRegistry()
-    .add('objectId', {
-      validate: zodObjectId,
+    .register('objectId', {
+      schema: zodObjectId,
       bsonType: 'objectId'
     })
-    .add('strictDate', {
-      validate: zodStrictDateType,
+    .register('strictDate', {
+      schema: zodStrictDateType,
       bsonType: 'date'
     });
 
@@ -162,8 +162,8 @@ test('works without custom types configuration (backward compatibility)', () => 
 
 test('supports nested objects with custom types', () => {
   const mongoTypes = new MongoTypeRegistry()
-    .add('objectId', {
-      validate: zodObjectId,
+    .register('objectId', {
+      schema: zodObjectId,
       bsonType: 'objectId'
     });
 
@@ -187,8 +187,8 @@ test('supports nested objects with custom types', () => {
 
 test('supports arrays with custom types', () => {
   const mongoTypes = new MongoTypeRegistry()
-    .add('objectId', {
-      validate: zodObjectId,
+    .register('objectId', {
+      schema: zodObjectId,
       bsonType: 'objectId'
     });
 
@@ -217,8 +217,8 @@ test('supports custom MongoDB types beyond objectId and date', () => {
   const zodDecimalType = z.custom<string>(zodDecimal);
   
   const mongoTypes = new MongoTypeRegistry()
-    .add('decimal', {
-      validate: zodDecimalType,
+    .register('decimal', {
+      schema: zodDecimalType,
       bsonType: 'decimal'
     });
 
@@ -240,8 +240,8 @@ test('MongoTypeRegistry class methods work correctly', () => {
   const registry = new MongoTypeRegistry();
   
   // Test add method
-  registry.add('objectId', {
-    validate: zodObjectId,
+  registry.register('objectId', {
+    schema: zodObjectId,
     bsonType: 'objectId'
   });
   
