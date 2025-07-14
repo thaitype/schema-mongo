@@ -27,6 +27,7 @@
     "lint:fix": "eslint --fix ./src && prettier -w src"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.29.5",
     "@eslint/js": "^9.23.0",
     "@typescript-eslint/eslint-plugin": "^8.27.0",
     "@vitest/coverage-istanbul": "^3.2.4",
