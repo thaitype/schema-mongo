@@ -1,4 +1,4 @@
-import { convertJsonSchemaToMongoSchema } from '@thaitype/schema-mongo';
+import { convertJsonSchemaToMongoSchema } from 'schema-mongo';
 
 // Example 1: Basic JSON Schema conversion
 console.log('=== Basic JSON Schema Example ===');

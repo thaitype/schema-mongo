@@ -1,5 +1,5 @@
 {
-  "name": "@thaitype/schema-mongo",
+  "name": "schema-mongo",
   "version": "0.0.0",
   "type": "module",
   "description": "Transform validation schemas (including Zod) to MongoDB-compatible JSON Schema, with support for custom data types.",

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { zodSchema } from '@thaitype/schema-mongo/adapters/zod';
+import { zodSchema } from 'schema-mongo/adapters/zod';
 
 console.log('=== Zod Integration Example ===');
 

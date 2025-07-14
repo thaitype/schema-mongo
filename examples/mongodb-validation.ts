@@ -1,7 +1,7 @@
 import { MongoClient, ObjectId } from 'mongodb';
 import { z } from 'zod';
-import { convertJsonSchemaToMongoSchema } from '@thaitype/schema-mongo';
-import { zodSchema } from '@thaitype/schema-mongo/adapters/zod';
+import { convertJsonSchemaToMongoSchema } from 'schema-mongo';
+import { zodSchema } from 'schema-mongo/adapters/zod';
 
 /**
  * Example showing how to use the converted schemas with MongoDB collection validation
