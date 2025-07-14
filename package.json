@@ -1,14 +1,14 @@
 {
   "name": "schema-mongo",
   "version": "1.0.0",
-  "description": "Lightweight utility to convert JSON Schema to MongoDB $jsonSchema format",
+  "description": "Framework-agnostic library for converting validation schemas to MongoDB format with custom types",
   "main": "src/index.ts",
   "module": "src/index.ts",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
-  "keywords": ["mongodb", "json-schema", "validation", "schema", "conversion"],
+  "keywords": ["mongodb", "validation", "schema", "zod", "json-schema", "adapters", "objectid", "custom-types"],
   "author": "",
   "license": "MIT",
   "repository": {

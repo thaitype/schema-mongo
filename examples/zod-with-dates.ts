@@ -13,14 +13,14 @@ const UserSchema = z.object({
   lastLogin: z.date().optional()
 });
 
-console.log('1. Simple date schema (using fluent API):');
-// NEW: One-liner conversion to MongoDB schema
+console.log('1. Simple date schema (using Zod adapter):');
+// One-liner conversion to MongoDB schema
 const userMongoSchema = zodSchema(UserSchema).toMongoSchema();
 
 console.log('MongoDB Schema:');
 console.log(JSON.stringify(userMongoSchema, null, 2));
 
-// For educational purposes - showing the intermediate JSON schema
+// Show the intermediate JSON schema for reference
 console.log('\nJSON Schema (with metadata) - for reference:');
 const userJsonSchema = zodSchema(UserSchema).toJsonSchema();
 console.log(JSON.stringify(userJsonSchema, null, 2));
@@ -45,10 +45,10 @@ const EventSchema = z.object({
   updatedAt: z.date().optional()
 });
 
-// Using fluent API for cleaner conversion
+// Using Zod adapter for cleaner conversion
 const eventMongoSchema = zodSchema(EventSchema).toMongoSchema();
 
-console.log('Complex nested schema with dates (using fluent API):');
+console.log('Complex nested schema with dates (using Zod adapter):');
 console.log(JSON.stringify(eventMongoSchema, null, 2));
 
 // Example 3: Date in union types
@@ -69,14 +69,14 @@ const LogEntrySchema = z.union([
   })
 ]);
 
-// Fluent API works perfectly with complex union types
+// Zod adapter works perfectly with complex union types
 const logMongoSchema = zodSchema(LogEntrySchema).toMongoSchema();
 
-console.log('Union with dates (using fluent API):');
+console.log('Union with dates (using Zod adapter):');
 console.log(JSON.stringify(logMongoSchema, null, 2));
 
-// Example 4: ObjectId + Date Custom Types (NEW)
-console.log('\n=== NEW: ObjectId + Date Custom Types Example ===');
+// Example 4: ObjectId + Date Custom Types
+console.log('\n=== ObjectId + Date Custom Types Example ===');
 
 // Define ObjectId validation function
 function zodObjectId(value: any): boolean {
@@ -121,7 +121,7 @@ async function setupWithMongoDB() {
   
   const db = client.db('example');
   
-  // Create collection with date validation - NOW EVEN SIMPLER!
+  // Create collection with date validation - clean and simple!
   await db.createCollection('events', {
     validator: { $jsonSchema: zodSchema(EventSchema).toMongoSchema() },
     validationAction: 'error'

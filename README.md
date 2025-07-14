@@ -1,177 +1,288 @@
-# mongo-schema – Design Specification
+# schema-mongo
 
-## 1. Goal
+> Convert validation schemas to MongoDB format with custom type support
 
-The purpose of the `mongo-schema` package is to provide a **lightweight, dependency-free utility** for converting a standard [JSON Schema (Draft-04+)](https://json-schema.org/) into a MongoDB-compatible **\$jsonSchema** validator.
+A framework-agnostic library for converting validation schemas to MongoDB-compatible `$jsonSchema` format. Features a clean adapter architecture with robust custom type support for MongoDB-specific types like ObjectId and Date.
 
-MongoDB's `$jsonSchema` uses a dialect that differs from pure JSON Schema by introducing the `bsonType` keyword and removing unsupported features. This package aims to handle that conversion cleanly and accurately.
+## Features
 
-## 2. Design Principles
+- **🏗️ Framework-Agnostic Core**: JSON Schema → MongoDB conversion engine
+- **🔌 Adapter Architecture**: Currently supports Zod (extensible to other validators)
+- **🎯 Custom Types**: ObjectId, Date, Decimal, Binary, and extensible type system
+- **✨ Fluent API**: Clean, intuitive interface for common workflows
+- **🛡️ Type-Safe**: Full TypeScript support with comprehensive type definitions
 
-* **Dependency-Free Core**: No third-party dependencies should be used for the core conversion function. It must rely only on native JavaScript/TypeScript.
-* **Framework-Agnostic**: The package should be standalone and not rely on or include `monguard`, Zod, or any other library.
-* **Composable and Testable**: Functions should be testable in isolation and suitable for integration in any toolchain.
-* **Types First**: Fully typed using TypeScript, for maximum safety and IDE support.
+## Quick Start
 
-## 3. Package Scope and Structure
-
-This package exposes a single public function:
-
-```ts
-function convertJsonSchemaToMongoSchema(schema: Record<string, any>): Record<string, any>
-```
-
-### What it does:
-
-* Converts `type` to `bsonType` recursively
-* Strips unsupported JSON Schema keywords (e.g., `title`, `description`, `examples`, `$schema`, `default`)
-* Recursively transforms nested schemas in `properties`, `items`, `allOf`, `anyOf`, `oneOf`, and `not`
-* Preserves validation constraints like `minimum`, `pattern`, `enum`, etc.
-
-### What it does *not* do:
-
-* Infer types from runtime data
-* Parse or validate Zod schemas directly (this must be done externally using Zod's `.toJSONSchema()`)
-
-## 4. Example Usage with Zod v4
-
-### Example Zod Schema
-
-```ts
+```typescript
 import { z } from 'zod';
-import { convertJsonSchemaToMongoSchema } from 'mongo-schema';
+import { zodSchema } from 'schema-mongo/adapters/zod';
 
-const User = z.object({
-  _id: z.string().regex(/^[0-9a-fA-F]{24}$/),
-  email: z.string().email(),
-  age: z.number().int().nonnegative().optional(),
+// Define ObjectId validator
+function zodObjectId(value: any): boolean {
+  return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+}
+
+// Create Zod schema with custom types
+const UserSchema = z.object({
+  _id: z.custom<string>(zodObjectId),
+  name: z.string(),
+  email: z.string(),
+  createdAt: z.date(),
+  isActive: z.boolean()
 });
 
-const jsonSchema = User.toJSONSchema();
-const mongoSchema = convertJsonSchemaToMongoSchema(jsonSchema);
+// Convert to MongoDB schema (one-liner!)
+const mongoSchema = zodSchema(UserSchema, {
+  customTypes: { zodObjectId: 'objectId' }
+}).toMongoSchema();
 
-console.log(JSON.stringify(mongoSchema, null, 2));
+// Use with MongoDB collection validation
+await db.createCollection('users', {
+  validator: { $jsonSchema: mongoSchema }
+});
 ```
 
-### Expected Output (Simplified)
+## Architecture
 
-```json
-{
-  "bsonType": "object",
-  "properties": {
-    "_id": { "bsonType": "string", "pattern": "^[0-9a-fA-F]{24}$" },
-    "email": { "bsonType": "string", "format": "email" },
-    "age": { "bsonType": "int", "minimum": 0 }
+The library uses a three-layer architecture for maximum flexibility:
+
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Validators    │───▶│     Adapters     │───▶│   Core Engine   │
+│  (Zod, etc.)    │    │  (zodSchema)     │    │ (JSON→MongoDB)  │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+```
+
+### Core Function (Framework-Agnostic)
+```typescript
+import { convertJsonSchemaToMongoSchema } from 'schema-mongo';
+
+const mongoSchema = convertJsonSchemaToMongoSchema(jsonSchema);
+```
+
+### Zod Adapter (Current Implementation)
+```typescript
+import { zodSchema } from 'schema-mongo/adapters/zod';
+
+const mongoSchema = zodSchema(zodSchema).toMongoSchema();
+```
+
+## Supported Validators
+
+- ✅ **Zod**: Full support via `zodSchema()` adapter with custom types
+- 🔄 **Others**: Extensible architecture ready for additional validators
+
+## Type Conversion
+
+| Zod Type | JSON Schema | MongoDB Schema |
+|----------|-------------|----------------|
+| `z.string()` | `{ type: "string" }` | `{ bsonType: "string" }` |
+| `z.number()` | `{ type: "number" }` | `{ bsonType: "double" }` |
+| `z.number().int()` | `{ type: "integer" }` | `{ bsonType: "int" }` |
+| `z.boolean()` | `{ type: "boolean" }` | `{ bsonType: "bool" }` |
+| `z.date()` | `{ type: "string", __mongoType: "date" }` | `{ bsonType: "date" }` |
+| `z.array(T)` | `{ type: "array", items: T }` | `{ bsonType: "array", items: T }` |
+| `z.object({})` | `{ type: "object", properties: {} }` | `{ bsonType: "object", properties: {} }` |
+
+## Custom Types
+
+The library includes a powerful custom type system for MongoDB-specific types:
+
+### ObjectId Support
+```typescript
+function zodObjectId(value: any): boolean {
+  return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+}
+
+const schema = z.object({
+  _id: z.custom<string>(zodObjectId),
+  userId: z.custom<string>(zodObjectId)
+});
+
+const mongoSchema = zodSchema(schema, {
+  customTypes: { zodObjectId: 'objectId' }
+}).toMongoSchema();
+// Results in: { _id: { bsonType: 'objectId' }, userId: { bsonType: 'objectId' } }
+```
+
+### Multiple Custom Types
+```typescript
+function zodObjectId(value: any): boolean {
+  return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+}
+
+function zodDecimal(value: any): boolean {
+  return typeof value === 'string' && /^\d+\.\d+$/.test(value);
+}
+
+const ProductSchema = z.object({
+  _id: z.custom<string>(zodObjectId),
+  price: z.custom<string>(zodDecimal),
+  createdAt: z.date()
+});
+
+const mongoSchema = zodSchema(ProductSchema, {
+  customTypes: {
+    zodObjectId: 'objectId',
+    zodDecimal: 'decimal'
   }
+}).toMongoSchema();
+```
+
+### Supported MongoDB Types
+- `objectId` - MongoDB ObjectId
+- `date` - MongoDB Date
+- `decimal` - MongoDB Decimal128
+- `binData` - MongoDB Binary Data
+- Any valid MongoDB BSON type
+
+## API Reference
+
+### `zodSchema(schema, options?)`
+
+Converts a Zod schema to MongoDB format using the fluent API.
+
+**Parameters:**
+- `schema: z.ZodTypeAny` - The Zod schema to convert
+- `options?: ZodToMongoOptions` - Configuration options
+
+**Returns:** `ZodSchemaResult` with fluent methods
+
+#### Options
+```typescript
+interface ZodToMongoOptions {
+  customTypes?: Record<string, string>;
 }
 ```
 
-## 5. Unit Test Example
-
-Using `vitest` or `jest`:
-
-```ts
-test('converts string type to bsonType', () => {
-  const input = {
-    type: 'string',
-    title: 'User ID'
-  };
-  const result = convertJsonSchemaToMongoSchema(input);
-  expect(result).toEqual({ bsonType: 'string' });
-});
-
-test('removes unsupported keys', () => {
-  const input = {
-    type: 'object',
-    title: 'Example',
-    description: 'This will be removed',
-    properties: { foo: { type: 'number' } }
-  };
-  const result = convertJsonSchemaToMongoSchema(input);
-  expect(result).not.toHaveProperty('title');
-  expect(result.properties.foo.bsonType).toBe('double');
-});
+#### Fluent Methods
+```typescript
+interface ZodSchemaResult {
+  toJsonSchema(): ExtendedJsonSchema;  // Get JSON Schema with MongoDB metadata
+  toMongoSchema(): Record<string, any>; // Get MongoDB-compatible schema
+}
 ```
 
-## 6. Integration Test with mongodb-memory-server
+### `convertJsonSchemaToMongoSchema(schema)`
 
-### Setup
+Core conversion function (framework-agnostic).
 
-Install dev dependencies:
+**Parameters:**
+- `schema: Record<string, any>` - JSON Schema to convert
 
-```bash
-npm install --save-dev mongodb-memory-server mongodb zod
+**Returns:** `Record<string, any>` - MongoDB-compatible schema
+
+## Examples
+
+### Basic Usage
+```typescript
+const UserSchema = z.object({
+  name: z.string(),
+  age: z.number().int(),
+  isActive: z.boolean()
+});
+
+const mongoSchema = zodSchema(UserSchema).toMongoSchema();
 ```
 
-### Test
-
-```ts
-import { MongoMemoryServer } from 'mongodb-memory-server';
+### With MongoDB Validation
+```typescript
 import { MongoClient } from 'mongodb';
-import { z } from 'zod';
-import { convertJsonSchemaToMongoSchema } from 'mongo-schema';
 
-it('should enforce schema validation on insert (manual schema)', async () => {
-  const schema = {
-    type: 'object',
-    required: ['email'],
-    properties: {
-      email: { type: 'string', format: 'email' },
-      age: { type: 'integer', minimum: 0 }
-    }
-  };
-  const mongoSchema = convertJsonSchemaToMongoSchema(schema);
+const client = new MongoClient('mongodb://localhost:27017');
+await client.connect();
 
-  const mongod = await MongoMemoryServer.create();
-  const uri = mongod.getUri();
-  const client = new MongoClient(uri);
-  await client.connect();
+const db = client.db('myapp');
 
-  const db = client.db('testdb');
-  await db.createCollection('users', {
-    validator: { $jsonSchema: mongoSchema },
-    validationAction: 'error'
-  });
-
-  const users = db.collection('users');
-
-  await expect(users.insertOne({ email: 'a@b.com', age: 25 })).resolves.toBeTruthy();
-  await expect(users.insertOne({ email: 123 })).rejects.toThrow();
-
-  await client.close();
-  await mongod.stop();
+// Create collection with validation
+await db.createCollection('users', {
+  validator: { $jsonSchema: mongoSchema },
+  validationAction: 'error'
 });
 
-it('should enforce schema validation on insert (zod schema)', async () => {
-  const User = z.object({
-    email: z.string().email(),
-    age: z.number().int().nonnegative().optional()
-  });
-
-  const jsonSchema = User.toJSONSchema();
-  const mongoSchema = convertJsonSchemaToMongoSchema(jsonSchema);
-
-  const mongod = await MongoMemoryServer.create();
-  const uri = mongod.getUri();
-  const client = new MongoClient(uri);
-  await client.connect();
-
-  const db = client.db('testdb');
-  await db.createCollection('zodusers', {
-    validator: { $jsonSchema: mongoSchema },
-    validationAction: 'error'
-  });
-
-  const users = db.collection('zodusers');
-
-  await expect(users.insertOne({ email: 'test@example.com', age: 30 })).resolves.toBeTruthy();
-  await expect(users.insertOne({ email: false })).rejects.toThrow();
-
-  await client.close();
-  await mongod.stop();
+// Now inserts will be validated against the schema
+const users = db.collection('users');
+await users.insertOne({
+  _id: new ObjectId(),
+  name: 'John Doe',
+  age: 30,
+  isActive: true
 });
 ```
 
----
+### Complex Nested Schema
+```typescript
+const AddressSchema = z.object({
+  street: z.string(),
+  city: z.string(),
+  zipCode: z.string()
+});
 
-This spec ensures that `mongo-schema` is lightweight, standalone, and fully testable in both unit and integration contexts, while remaining compatible with modern validation workflows using Zod or plain JSON Schema.
+const UserSchema = z.object({
+  _id: z.custom<string>(zodObjectId),
+  profile: z.object({
+    name: z.string(),
+    address: AddressSchema
+  }),
+  contacts: z.array(z.object({
+    type: z.enum(['email', 'phone']),
+    value: z.string()
+  })),
+  createdAt: z.date()
+});
+
+const mongoSchema = zodSchema(UserSchema, {
+  customTypes: { zodObjectId: 'objectId' }
+}).toMongoSchema();
+```
+
+## Limitations
+
+### Validation vs. Conversion
+This library focuses on **type conversion**, not validation constraints:
+
+✅ **Supported**: Type mapping (`z.string()` → `bsonType: "string"`)  
+❌ **Not Supported**: Validation constraints (`z.string().min(5)`, `z.number().max(100)`)
+
+For validation constraints, use Zod directly in your application layer:
+
+```typescript
+// Use Zod for application validation
+const result = UserSchema.parse(userData);
+
+// Use schema-mongo for MongoDB schema setup
+const mongoSchema = zodSchema(UserSchema).toMongoSchema();
+```
+
+### Custom Type Requirements
+Custom types require named functions for detection:
+
+```typescript
+// ✅ Good - Named function
+function zodObjectId(value: any): boolean {
+  return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+}
+
+// ❌ Won't work - Anonymous function
+z.custom((value) => /^[0-9a-fA-F]{24}$/.test(value))
+```
+
+## Contributing
+
+The library is designed for extensibility. To add support for new validators:
+
+1. Create an adapter in `src/adapters/`
+2. Implement the conversion logic to JSON Schema
+3. Use the core `convertJsonSchemaToMongoSchema()` function
+4. Add fluent API methods for consistency
+
+## License
+
+MIT
+
+## Related
+
+- [Zod](https://zod.dev) - TypeScript validation library
+- [MongoDB JSON Schema](https://docs.mongodb.com/manual/reference/operator/query/jsonSchema/) - MongoDB validation documentation
+- [JSON Schema](https://json-schema.org) - JSON Schema specification

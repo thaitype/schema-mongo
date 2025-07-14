@@ -12,24 +12,20 @@ const userSchema = {
       pattern: '^[0-9a-fA-F]{24}$' 
     },
     email: { 
-      type: 'string',
-      format: 'email' // This will be stripped as MongoDB doesn't support it
+      type: 'string'
     },
     name: { 
-      type: 'string',
-      minLength: 1 
+      type: 'string'
     },
     age: { 
-      type: 'integer', 
-      minimum: 0,
-      maximum: 120 
+      type: 'integer'
     },
     tags: {
       type: 'array',
       items: { type: 'string' }
     }
   },
-  additionalProperties: false // This will be stripped
+  additionalProperties: false // Note: additionalProperties is stripped in MongoDB conversion
 };
 
 const mongoUserSchema = convertJsonSchemaToMongoSchema(userSchema);
@@ -49,8 +45,7 @@ const productSchema = {
   properties: {
     name: { type: 'string' },
     price: { 
-      type: 'number', 
-      minimum: 0 
+      type: 'number'
     },
     category: {
       type: 'object',
@@ -68,7 +63,7 @@ const productSchema = {
         properties: {
           size: { type: 'string', enum: ['S', 'M', 'L', 'XL'] },
           color: { type: 'string' },
-          stock: { type: 'integer', minimum: 0 }
+          stock: { type: 'integer' }
         }
       }
     }
@@ -95,7 +90,7 @@ const compositionSchema = {
       anyOf: [
         {
           properties: {
-            email: { type: 'string', format: 'email' }
+            email: { type: 'string' }
           }
         },
         {

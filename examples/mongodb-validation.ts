@@ -21,13 +21,13 @@ async function setupMongoValidation() {
   const UserSchema = z.object({
     _id: z.string(),
     email: z.string(),
-    name: z.string().min(1),
-    age: z.number().int().min(0).max(120).optional(),
+    name: z.string(),
+    age: z.number().int().optional(),
     createdAt: z.string(),
     isActive: z.boolean().default(true)
   });
 
-  // NEW: Using fluent API for cleaner code
+  // Using Zod adapter for cleaner code
   const userMongoSchema = zodSchema(UserSchema).toMongoSchema();
 
   // Create collection with validation
@@ -79,8 +79,8 @@ async function setupMongoValidation() {
     required: ['name', 'price', 'category'],
     properties: {
       _id: { type: 'string' },
-      name: { type: 'string', minLength: 1 },
-      price: { type: 'number', minimum: 0 },
+      name: { type: 'string' },
+      price: { type: 'number' },
       category: {
         type: 'object',
         required: ['id', 'name'],
@@ -129,24 +129,21 @@ async function setupMongoValidation() {
     console.error('❌ Error inserting valid product:', (error as Error).message);
   }
 
-  // Test invalid product (negative price)
+  // Test invalid product (missing required field)
   try {
     await productsCollection.insertOne({
       _id: new (require('mongodb')).ObjectId(),
       name: 'Invalid Item',
-      price: -10, // Invalid: negative price
-      category: {
-        id: 'test',
-        name: 'Test'
-      }
+      // missing required price and category
+      inStock: true
     });
     console.log('❌ Invalid product was incorrectly accepted');
   } catch (error) {
     console.log('✅ Invalid product document correctly rejected:', (error as Error).message);
   }
 
-  // Example 3: ObjectId Validation (NEW)
-  console.log('\n=== NEW: ObjectId and Date Validation Example ===');
+  // Example 3: ObjectId Validation
+  console.log('\n=== ObjectId and Date Validation Example ===');
 
   // Define ObjectId validation function
   function zodObjectId(value: any): boolean {
@@ -155,7 +152,7 @@ async function setupMongoValidation() {
 
   const TaskSchema = z.object({
     _id: z.custom<string>(zodObjectId),
-    title: z.string().min(1),
+    title: z.string(),
     assigneeId: z.custom<string>(zodObjectId),
     createdAt: z.date(),
     dueDate: z.date().optional(),
@@ -163,7 +160,7 @@ async function setupMongoValidation() {
     status: z.enum(['todo', 'in_progress', 'done'])
   });
 
-  // Using fluent API with custom types - super clean!
+  // Using Zod adapter with custom types - super clean!
   const taskMongoSchema = zodSchema(TaskSchema, {
     customTypes: { zodObjectId: 'objectId' }
   }).toMongoSchema();

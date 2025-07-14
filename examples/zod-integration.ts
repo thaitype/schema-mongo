@@ -8,23 +8,22 @@ console.log('=== Zod Integration Example ===');
 const UserZodSchema = z.object({
   id: z.string(),
   email: z.string(),
-  name: z.string().min(1),
-  age: z.number().int().min(0).max(120).optional(),
+  name: z.string(),
+  age: z.number().int().optional(),
   isActive: z.boolean().default(true),
   tags: z.array(z.string()).optional()
 });
 
-// NEW: Convert Zod schema directly to MongoDB schema using fluent API
+// Convert Zod schema directly to MongoDB schema using fluent API
 const userMongoSchema = zodSchema(UserZodSchema).toMongoSchema();
 
-console.log('Zod Schema → MongoDB Schema (using fluent API):');
+console.log('Zod Schema → MongoDB Schema (using adapter):');
 console.log(JSON.stringify(userMongoSchema, null, 2));
 
-// ALTERNATIVE: Traditional approach (still works)
-console.log('\n--- Traditional approach (still supported) ---');
-const userJsonSchema = z.toJSONSchema(UserZodSchema);
-const userMongoSchemaTraditional = convertJsonSchemaToMongoSchema(userJsonSchema);
-console.log('Traditional:', JSON.stringify(userMongoSchemaTraditional, null, 2));
+// Also show the JSON Schema intermediate step
+console.log('\n--- JSON Schema intermediate step ---');
+const userJsonSchema = zodSchema(UserZodSchema).toJsonSchema();
+console.log('JSON Schema:', JSON.stringify(userJsonSchema, null, 2));
 
 // Example 2: Complex nested Zod schema
 console.log('\n=== Complex Nested Zod Example ===');
@@ -45,19 +44,19 @@ const ContactSchema = z.object({
 
 const CompanySchema = z.object({
   id: z.string(),
-  name: z.string().min(1),
-  website: z.string().url().optional(),
+  name: z.string(),
+  website: z.string().optional(),
   address: AddressSchema,
-  contacts: z.array(ContactSchema).min(1),
-  employees: z.number().int().min(1),
-  founded: z.number().int().min(1800).max(new Date().getFullYear()),
+  contacts: z.array(ContactSchema),
+  employees: z.number().int(),
+  founded: z.number().int(),
   tags: z.array(z.string()).default([])
 });
 
-// Using fluent API for cleaner code
+// Using Zod adapter for cleaner code
 const companyMongoSchema = zodSchema(CompanySchema).toMongoSchema();
 
-console.log('Complex nested schema (using fluent API):');
+console.log('Complex nested schema (using Zod adapter):');
 console.log(JSON.stringify(companyMongoSchema, null, 2));
 
 // Example 3: Union types and optionals
@@ -72,7 +71,7 @@ const EventSchema = z.object({
   location: z.union([
     z.object({
       type: z.literal('online'),
-      url: z.string().url()
+      url: z.string()
     }),
     z.object({
       type: z.literal('physical'),
@@ -83,10 +82,10 @@ const EventSchema = z.object({
   isPublic: z.boolean().default(true)
 });
 
-// Fluent API makes complex schemas more readable
+// Zod adapter makes complex schemas more readable
 const eventMongoSchema = zodSchema(EventSchema).toMongoSchema();
 
-console.log('Union types schema (using fluent API):');
+console.log('Union types schema (using Zod adapter):');
 console.log(JSON.stringify(eventMongoSchema, null, 2));
 
 // Example 4: ObjectId and Custom Types Example
@@ -101,7 +100,7 @@ const ProductSchema = z.object({
   _id: z.custom<string>(zodObjectId),           // ObjectId
   categoryId: z.custom<string>(zodObjectId),    // Another ObjectId
   name: z.string(),
-  price: z.number().min(0),
+  price: z.number(),
   createdAt: z.date(),                          // Built-in date
   tags: z.array(z.object({
     tagId: z.custom<string>(zodObjectId),       // ObjectId in arrays
