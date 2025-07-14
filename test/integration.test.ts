@@ -338,3 +338,209 @@ test('full pipeline: Zod dates → MongoDB validation with actual Date objects',
   // Clean up
   await db.dropCollection('events');
 });
+
+test('full pipeline: ObjectId + Date custom types → MongoDB validation', async () => {
+  // 1. Define custom validators for MongoDB types
+  function zodObjectId(value: any): boolean {
+    return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+  }
+
+  function zodStrictDate(value: any): boolean {
+    return value instanceof Date && !isNaN(value.getTime());
+  }
+
+  // 2. Create Zod schema with custom types
+  const UserSchema = z.object({
+    _id: z.custom<string>(zodObjectId),           // ObjectId validation
+    parentId: z.custom<string>(zodObjectId).optional(), // Optional ObjectId
+    profile: z.object({
+      userId: z.custom<string>(zodObjectId),      // Nested ObjectId
+      createdAt: z.custom<Date>(zodStrictDate),   // Custom date validation
+      updatedAt: z.date(),                        // Built-in date
+      preferences: z.object({
+        lastLoginAt: z.date().optional(),         // Optional built-in date
+        accountCreated: z.custom<Date>(zodStrictDate), // Nested custom date
+      })
+    }),
+    tags: z.array(z.object({
+      tagId: z.custom<string>(zodObjectId),       // Array with ObjectId
+      assignedAt: z.date()                        // Array with date
+    })).optional(),
+    metadata: z.object({
+      createdBy: z.custom<string>(zodObjectId),
+      timestamp: z.date()
+    }).optional()
+  });
+
+  // 3. Convert using custom types configuration
+  const jsonSchema = zodToCompatibleJsonSchema(UserSchema, {
+    customTypes: {
+      zodObjectId: 'objectId',
+      zodStrictDate: 'date'
+    }
+  });
+  
+  const mongoSchema = convertJsonSchemaToMongoSchema(jsonSchema);
+
+  // 4. Verify the schema has proper MongoDB types
+  expect(mongoSchema.properties._id.bsonType).toBe('objectId');
+  expect(mongoSchema.properties.parentId.bsonType).toBe('objectId');
+  expect(mongoSchema.properties.profile.properties.userId.bsonType).toBe('objectId');
+  expect(mongoSchema.properties.profile.properties.createdAt.bsonType).toBe('date');
+  expect(mongoSchema.properties.profile.properties.updatedAt.bsonType).toBe('date');
+  expect(mongoSchema.properties.tags.items.properties.tagId.bsonType).toBe('objectId');
+  expect(mongoSchema.properties.tags.items.properties.assignedAt.bsonType).toBe('date');
+
+  // 5. Create MongoDB collection with strict validation
+  await db.createCollection('objectid_users', {
+    validator: { $jsonSchema: mongoSchema },
+    validationAction: 'error',
+    validationLevel: 'strict'
+  });
+
+  const collection = db.collection('objectid_users');
+
+  // Import ObjectId from MongoDB driver for proper BSON ObjectId objects
+  const { ObjectId } = require('mongodb');
+
+  // 6. Test with valid MongoDB ObjectIds and Dates - should succeed
+  const validUser = {
+    _id: new ObjectId(),                         // BSON ObjectId
+    parentId: new ObjectId(),                    // BSON ObjectId
+    profile: {
+      userId: new ObjectId(),                    // BSON ObjectId
+      createdAt: new Date('2024-01-01T00:00:00Z'), // BSON Date
+      updatedAt: new Date(),                     // BSON Date
+      preferences: {
+        lastLoginAt: new Date('2024-12-01T10:00:00Z'), // BSON Date
+        accountCreated: new Date('2024-01-01T00:00:00Z') // BSON Date
+      }
+    },
+    tags: [{
+      tagId: new ObjectId(),                     // BSON ObjectId in array
+      assignedAt: new Date()                     // BSON Date in array
+    }],
+    metadata: {
+      createdBy: new ObjectId(),                 // BSON ObjectId
+      timestamp: new Date()                      // BSON Date
+    }
+  };
+
+  await expect(collection.insertOne(validUser)).resolves.toBeTruthy();
+
+  // 7. Test with minimal required fields only - should succeed
+  const minimalUser = {
+    _id: new ObjectId(),
+    profile: {
+      userId: new ObjectId(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      preferences: {
+        accountCreated: new Date()
+      }
+    }
+  };
+
+  await expect(collection.insertOne(minimalUser)).resolves.toBeTruthy();
+
+  // 8. Test validation failures - invalid ObjectId format should fail
+  const invalidObjectIdUser = {
+    _id: 'invalid-objectid',                    // Invalid: not 24 hex chars
+    profile: {
+      userId: new ObjectId(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      preferences: {
+        accountCreated: new Date()
+      }
+    }
+  };
+
+  await expect(collection.insertOne(invalidObjectIdUser)).rejects.toThrow();
+
+  // 9. Test with string instead of Date should fail
+  const invalidDateUser = {
+    _id: new ObjectId(),
+    profile: {
+      userId: new ObjectId(),
+      createdAt: '2024-01-01T00:00:00Z',        // Invalid: string instead of Date
+      updatedAt: new Date(),
+      preferences: {
+        accountCreated: new Date()
+      }
+    }
+  };
+
+  await expect(collection.insertOne(invalidDateUser)).rejects.toThrow();
+
+  // 10. Test nested ObjectId validation failure
+  const invalidNestedObjectIdUser = {
+    _id: new ObjectId(),
+    profile: {
+      userId: 'invalid-nested-objectid',        // Invalid: not proper ObjectId
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      preferences: {
+        accountCreated: new Date()
+      }
+    }
+  };
+
+  await expect(collection.insertOne(invalidNestedObjectIdUser)).rejects.toThrow();
+
+  // 11. Test array validation - invalid ObjectId in array should fail
+  const invalidArrayObjectIdUser = {
+    _id: new ObjectId(),
+    profile: {
+      userId: new ObjectId(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      preferences: {
+        accountCreated: new Date()
+      }
+    },
+    tags: [{
+      tagId: 'invalid-array-objectid',          // Invalid: not proper ObjectId
+      assignedAt: new Date()
+    }]
+  };
+
+  await expect(collection.insertOne(invalidArrayObjectIdUser)).rejects.toThrow();
+
+  // 12. Test array validation - invalid Date in array should fail
+  const invalidArrayDateUser = {
+    _id: new ObjectId(),
+    profile: {
+      userId: new ObjectId(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      preferences: {
+        accountCreated: new Date()
+      }
+    },
+    tags: [{
+      tagId: new ObjectId(),
+      assignedAt: 'invalid-array-date'          // Invalid: string instead of Date
+    }]
+  };
+
+  await expect(collection.insertOne(invalidArrayDateUser)).rejects.toThrow();
+
+  // 13. Test missing required nested ObjectId field should fail
+  const missingNestedObjectIdUser = {
+    _id: new ObjectId(),
+    profile: {
+      // userId missing (required ObjectId)
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      preferences: {
+        accountCreated: new Date()
+      }
+    }
+  };
+
+  await expect(collection.insertOne(missingNestedObjectIdUser)).rejects.toThrow();
+
+  // Clean up
+  await db.dropCollection('objectid_users');
+});

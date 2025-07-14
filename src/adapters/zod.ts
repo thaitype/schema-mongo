@@ -11,26 +11,38 @@ interface ExtendedJsonSchema {
   anyOf?: ExtendedJsonSchema[];
   oneOf?: ExtendedJsonSchema[];
   not?: ExtendedJsonSchema;
-  __mongoType?: 'date' | 'objectId'; // MongoDB-specific type hints
+  __mongoType?: 'date' | 'objectId' | string; // MongoDB-specific type hints
   [key: string]: any;
+}
+
+/**
+ * Configuration options for custom MongoDB type mapping
+ */
+interface ZodToMongoOptions {
+  customTypes?: Record<string, 'date' | 'objectId' | string>;
 }
 
 /**
  * Converts a Zod schema to a JSON Schema with MongoDB-compatible extensions.
  * Handles unsupported Zod types like z.date() by converting them to strings
  * with special metadata that can be processed by convertJsonSchemaToMongoSchema.
+ * Also supports custom MongoDB types through configuration.
  * 
  * @param zodSchema - The Zod schema to convert
+ * @param options - Configuration options for custom type mapping
  * @returns Extended JSON Schema with MongoDB type hints
  */
-export function zodToCompatibleJsonSchema(zodSchema: z.ZodTypeAny): ExtendedJsonSchema {
-  return processZodType(zodSchema);
+export function zodToCompatibleJsonSchema(
+  zodSchema: z.ZodTypeAny, 
+  options?: ZodToMongoOptions
+): ExtendedJsonSchema {
+  return processZodType(zodSchema, options?.customTypes);
 }
 
 /**
  * Recursively processes Zod types and converts them to extended JSON Schema
  */
-function processZodType(zodType: z.ZodTypeAny): ExtendedJsonSchema {
+function processZodType(zodType: z.ZodTypeAny, customTypes?: Record<string, string>): ExtendedJsonSchema {
   const def = zodType._def || (zodType as any).def;
   const zodType_ = def?.type;
   
@@ -40,6 +52,17 @@ function processZodType(zodType: z.ZodTypeAny): ExtendedJsonSchema {
       type: 'string',
       __mongoType: 'date'
     };
+  }
+  
+  // Handle ZodCustom - check for configured custom types
+  if (zodType_ === 'custom' && customTypes) {
+    const customTypeName = findCustomTypeName(zodType, customTypes);
+    if (customTypeName) {
+      return {
+        type: 'string',
+        __mongoType: customTypes[customTypeName]
+      };
+    }
   }
   
   // Handle ZodString
@@ -103,7 +126,7 @@ function processZodType(zodType: z.ZodTypeAny): ExtendedJsonSchema {
   if (zodType_ === 'array') {
     const result: ExtendedJsonSchema = {
       type: 'array',
-      items: processZodType(def.element)
+      items: processZodType(def.element, customTypes)
     };
     
     // Add array constraints (Zod v4 structure may be different)
@@ -128,7 +151,7 @@ function processZodType(zodType: z.ZodTypeAny): ExtendedJsonSchema {
     const required: string[] = [];
     
     for (const [key, value] of Object.entries(def.shape)) {
-      properties[key] = processZodType(value as z.ZodTypeAny);
+      properties[key] = processZodType(value as z.ZodTypeAny, customTypes);
       
       // Check if field is required (not optional)
       // In Zod v4, we need to check the def structure differently
@@ -170,20 +193,20 @@ function processZodType(zodType: z.ZodTypeAny): ExtendedJsonSchema {
   // Handle ZodUnion
   if (zodType_ === 'union') {
     return {
-      anyOf: def.options.map((option: z.ZodTypeAny) => processZodType(option))
+      anyOf: def.options.map((option: z.ZodTypeAny) => processZodType(option, customTypes))
     };
   }
   
   // Handle ZodIntersection
   if (zodType_ === 'intersection') {
     return {
-      allOf: [processZodType(def.left), processZodType(def.right)]
+      allOf: [processZodType(def.left, customTypes), processZodType(def.right, customTypes)]
     };
   }
   
   // Handle ZodOptional
   if (zodType_ === 'optional') {
-    return processZodType(def.innerType);
+    return processZodType(def.innerType, customTypes);
   }
   
   // Handle ZodDefault
@@ -195,7 +218,7 @@ function processZodType(zodType: z.ZodTypeAny): ExtendedJsonSchema {
   
   // Handle ZodNullable
   if (zodType_ === 'nullable') {
-    const innerSchema = processZodType(def.innerType);
+    const innerSchema = processZodType(def.innerType, customTypes);
     return {
       anyOf: [
         innerSchema,
@@ -217,4 +240,46 @@ function processZodType(zodType: z.ZodTypeAny): ExtendedJsonSchema {
     console.warn(`Unsupported Zod type: ${zodType_}. Converting to permissive schema.`);
     return {};
   }
+}
+
+/**
+ * Attempts to find a custom type name by matching the Zod custom function
+ * against the configured custom types.
+ */
+function findCustomTypeName(zodType: z.ZodTypeAny, customTypes: Record<string, string>): string | undefined {
+  const def = zodType._def || (zodType as any).def;
+  
+  // Strategy 1: Check the function name (Zod v4 stores the function in def.fn)
+  if (def.fn && typeof def.fn === 'function') {
+    const functionName = def.fn.name;
+    if (functionName && customTypes[functionName]) {
+      return functionName;
+    }
+  }
+  
+  // Strategy 2: Check for a custom property on the zodType
+  const customTypeName = (zodType as any).__customTypeName;
+  if (customTypeName && customTypes[customTypeName]) {
+    return customTypeName;
+  }
+  
+  // Strategy 3: Match function toString() - works for testing
+  if (def.fn && typeof def.fn === 'function') {
+    const funcString = def.fn.toString();
+    for (const typeName of Object.keys(customTypes)) {
+      if (funcString.includes(typeName)) {
+        return typeName;
+      }
+    }
+  }
+  
+  // Strategy 4: Check legacy def.check for older Zod versions
+  if (def.check && typeof def.check === 'function') {
+    const functionName = def.check.name;
+    if (functionName && customTypes[functionName]) {
+      return functionName;
+    }
+  }
+  
+  return undefined;
 }

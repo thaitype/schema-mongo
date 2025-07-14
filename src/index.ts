@@ -82,7 +82,12 @@ export function convertJsonSchemaToMongoSchema(schema: Record<string, any>): Rec
         result.bsonType = 'objectId';
         break;
       default:
-        console.warn(`Unknown __mongoType: ${schema.__mongoType}`);
+        // For extensibility, allow any string as MongoDB type
+        if (typeof schema.__mongoType === 'string') {
+          result.bsonType = schema.__mongoType;
+        } else {
+          console.warn(`Unknown __mongoType: ${schema.__mongoType}`);
+        }
     }
   }
   
