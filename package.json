@@ -1,5 +1,5 @@
 {
-  "name": "@thaitype/schema-mongo",
+  "name": "schema-mongo",
   "version": "0.0.0",
   "type": "module",
   "description": "Agnostic library for converting validation schemas to MongoDB format with custom types, supporting Zod.",
@@ -55,7 +55,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/thaitype/minimal-typescript-node-esm-starter.git"
+    "url": "https://github.com/thaitype/schema-mongo.git"
   },
-  "homepage": "https://github.com/thaitype/minimal-typescript-node-esm-starter"
+  "homepage": "https://github.com/thaitype/schema-mongo",
+  "packageManager": "pnpm@10.11.0",
+  "engines": {
+    "node": ">=20"
+  }
 }

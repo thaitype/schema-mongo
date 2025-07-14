@@ -277,9 +277,13 @@ The library is designed for extensibility. To add support for new validators:
 3. Use the core `convertJsonSchemaToMongoSchema()` function
 4. Add fluent API methods for consistency
 
+
 ## License
 
-MIT
+MIT License © 2025
+Created by [@thaitype](https://github.com/thaitype)
+
+
 
 ## Related
 
