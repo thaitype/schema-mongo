@@ -66,15 +66,15 @@ test('converts nested object with dates', () => {
   
   const result = zodToCompatibleJsonSchema(schema);
   
-  expect(result.properties.user.properties.birthday).toEqual({
+  expect(result.properties!.user.properties!.birthday).toEqual({
     type: 'string',
     __mongoType: 'date'
   });
-  expect(result.properties.post.properties.publishedAt).toEqual({
+  expect(result.properties!.post.properties!.publishedAt).toEqual({
     type: 'string',
     __mongoType: 'date'
   });
-  expect(result.properties.post.properties.updatedAt).toEqual({
+  expect(result.properties!.post.properties!.updatedAt).toEqual({
     type: 'string',
     __mongoType: 'date'
   });
