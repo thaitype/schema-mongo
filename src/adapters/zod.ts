@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { convertJsonSchemaToMongoSchema } from '../index';
 
 /**
  * Extended JSON Schema that includes MongoDB-specific metadata
@@ -18,8 +19,23 @@ interface ExtendedJsonSchema {
 /**
  * Configuration options for custom MongoDB type mapping
  */
-interface ZodToMongoOptions {
+export interface ZodToMongoOptions {
   customTypes?: Record<string, 'date' | 'objectId' | string>;
+}
+
+/**
+ * Result object from zodSchema function that provides fluent API methods
+ */
+export interface ZodSchemaResult {
+  /**
+   * Returns the extended JSON Schema with MongoDB type hints
+   */
+  toJsonSchema(): ExtendedJsonSchema;
+  
+  /**
+   * Returns the MongoDB-compatible schema by converting the JSON Schema
+   */
+  toMongoSchema(): Record<string, any>;
 }
 
 /**
@@ -37,6 +53,30 @@ export function zodToCompatibleJsonSchema(
   options?: ZodToMongoOptions
 ): ExtendedJsonSchema {
   return processZodType(zodSchema, options?.customTypes);
+}
+
+/**
+ * Creates a fluent API for converting Zod schemas to JSON Schema or MongoDB schema.
+ * Provides a more convenient interface with .toJsonSchema() and .toMongoSchema() methods.
+ * 
+ * @param zodSchema - The Zod schema to convert
+ * @param options - Configuration options for custom type mapping
+ * @returns Fluent API object with toJsonSchema() and toMongoSchema() methods
+ */
+export function zodSchema(
+  zodSchema: z.ZodTypeAny, 
+  options?: ZodToMongoOptions
+): ZodSchemaResult {
+  return {
+    toJsonSchema(): ExtendedJsonSchema {
+      return zodToCompatibleJsonSchema(zodSchema, options);
+    },
+    
+    toMongoSchema(): Record<string, any> {
+      const jsonSchema = zodToCompatibleJsonSchema(zodSchema, options);
+      return convertJsonSchemaToMongoSchema(jsonSchema);
+    }
+  };
 }
 
 /**
@@ -211,7 +251,7 @@ function processZodType(zodType: z.ZodTypeAny, customTypes?: Record<string, stri
   
   // Handle ZodDefault
   if (zodType_ === 'default') {
-    const result = processZodType(def.innerType);
+    const result = processZodType(def.innerType, customTypes);
     // Note: We don't include default values as they get stripped by MongoDB converter
     return result;
   }

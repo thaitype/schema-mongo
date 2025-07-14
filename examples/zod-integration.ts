@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { convertJsonSchemaToMongoSchema } from '../src/index';
+import { zodSchema } from '../src/adapters/zod';
 
 console.log('=== Zod Integration Example ===');
 
@@ -13,12 +14,17 @@ const UserZodSchema = z.object({
   tags: z.array(z.string()).optional()
 });
 
-// Convert Zod schema to JSON Schema, then to MongoDB schema
-const userJsonSchema = z.toJSONSchema(UserZodSchema);
-const userMongoSchema = convertJsonSchemaToMongoSchema(userJsonSchema);
+// NEW: Convert Zod schema directly to MongoDB schema using fluent API
+const userMongoSchema = zodSchema(UserZodSchema).toMongoSchema();
 
-console.log('Zod Schema → JSON Schema → MongoDB Schema:');
+console.log('Zod Schema → MongoDB Schema (using fluent API):');
 console.log(JSON.stringify(userMongoSchema, null, 2));
+
+// ALTERNATIVE: Traditional approach (still works)
+console.log('\n--- Traditional approach (still supported) ---');
+const userJsonSchema = z.toJSONSchema(UserZodSchema);
+const userMongoSchemaTraditional = convertJsonSchemaToMongoSchema(userJsonSchema);
+console.log('Traditional:', JSON.stringify(userMongoSchemaTraditional, null, 2));
 
 // Example 2: Complex nested Zod schema
 console.log('\n=== Complex Nested Zod Example ===');
@@ -48,10 +54,10 @@ const CompanySchema = z.object({
   tags: z.array(z.string()).default([])
 });
 
-const companyJsonSchema = z.toJSONSchema(CompanySchema);
-const companyMongoSchema = convertJsonSchemaToMongoSchema(companyJsonSchema);
+// Using fluent API for cleaner code
+const companyMongoSchema = zodSchema(CompanySchema).toMongoSchema();
 
-console.log('Complex nested schema:');
+console.log('Complex nested schema (using fluent API):');
 console.log(JSON.stringify(companyMongoSchema, null, 2));
 
 // Example 3: Union types and optionals
@@ -77,8 +83,36 @@ const EventSchema = z.object({
   isPublic: z.boolean().default(true)
 });
 
-const eventJsonSchema = z.toJSONSchema(EventSchema);
-const eventMongoSchema = convertJsonSchemaToMongoSchema(eventJsonSchema);
+// Fluent API makes complex schemas more readable
+const eventMongoSchema = zodSchema(EventSchema).toMongoSchema();
 
-console.log('Union types schema:');
+console.log('Union types schema (using fluent API):');
 console.log(JSON.stringify(eventMongoSchema, null, 2));
+
+// Example 4: ObjectId and Custom Types Example
+console.log('\n=== NEW: ObjectId and Custom Types Example ===');
+
+// Define ObjectId validation function
+function zodObjectId(value: any): boolean {
+  return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+}
+
+const ProductSchema = z.object({
+  _id: z.custom<string>(zodObjectId),           // ObjectId
+  categoryId: z.custom<string>(zodObjectId),    // Another ObjectId
+  name: z.string(),
+  price: z.number().min(0),
+  createdAt: z.date(),                          // Built-in date
+  tags: z.array(z.object({
+    tagId: z.custom<string>(zodObjectId),       // ObjectId in arrays
+    name: z.string()
+  })).optional()
+});
+
+// Convert with custom types configuration
+const productMongoSchema = zodSchema(ProductSchema, {
+  customTypes: { zodObjectId: 'objectId' }
+}).toMongoSchema();
+
+console.log('Schema with ObjectId and Date types:');
+console.log(JSON.stringify(productMongoSchema, null, 2));

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { zodToCompatibleJsonSchema } from '../src/adapters/zod';
 import { convertJsonSchemaToMongoSchema } from '../src/index';
+import { zodSchema } from '../src/adapters/zod';
 
 console.log('=== Zod Date Support Example ===');
 
@@ -12,15 +13,17 @@ const UserSchema = z.object({
   lastLogin: z.date().optional()
 });
 
-console.log('1. Simple date schema:');
-const userJsonSchema = zodToCompatibleJsonSchema(UserSchema);
-const userMongoSchema = convertJsonSchemaToMongoSchema(userJsonSchema);
+console.log('1. Simple date schema (using fluent API):');
+// NEW: One-liner conversion to MongoDB schema
+const userMongoSchema = zodSchema(UserSchema).toMongoSchema();
 
-console.log('JSON Schema (with metadata):');
-console.log(JSON.stringify(userJsonSchema, null, 2));
-
-console.log('\nMongoDB Schema:');
+console.log('MongoDB Schema:');
 console.log(JSON.stringify(userMongoSchema, null, 2));
+
+// For educational purposes - showing the intermediate JSON schema
+console.log('\nJSON Schema (with metadata) - for reference:');
+const userJsonSchema = zodSchema(UserSchema).toJsonSchema();
+console.log(JSON.stringify(userJsonSchema, null, 2));
 
 // Example 2: Complex nested schema with dates
 console.log('\n=== Complex Nested Example ===');
@@ -42,10 +45,10 @@ const EventSchema = z.object({
   updatedAt: z.date().optional()
 });
 
-const eventJsonSchema = zodToCompatibleJsonSchema(EventSchema);
-const eventMongoSchema = convertJsonSchemaToMongoSchema(eventJsonSchema);
+// Using fluent API for cleaner conversion
+const eventMongoSchema = zodSchema(EventSchema).toMongoSchema();
 
-console.log('Complex nested schema with dates:');
+console.log('Complex nested schema with dates (using fluent API):');
 console.log(JSON.stringify(eventMongoSchema, null, 2));
 
 // Example 3: Date in union types
@@ -66,13 +69,49 @@ const LogEntrySchema = z.union([
   })
 ]);
 
-const logJsonSchema = zodToCompatibleJsonSchema(LogEntrySchema);
-const logMongoSchema = convertJsonSchemaToMongoSchema(logJsonSchema);
+// Fluent API works perfectly with complex union types
+const logMongoSchema = zodSchema(LogEntrySchema).toMongoSchema();
 
-console.log('Union with dates:');
+console.log('Union with dates (using fluent API):');
 console.log(JSON.stringify(logMongoSchema, null, 2));
 
-// Example 4: Usage with MongoDB (commented out - requires MongoDB connection)
+// Example 4: ObjectId + Date Custom Types (NEW)
+console.log('\n=== NEW: ObjectId + Date Custom Types Example ===');
+
+// Define ObjectId validation function
+function zodObjectId(value: any): boolean {
+  return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+}
+
+// Define custom strict date validator
+function zodStrictDate(value: any): boolean {
+  return value instanceof Date && !isNaN(value.getTime());
+}
+
+const UserProfileSchema = z.object({
+  _id: z.custom<string>(zodObjectId),           // ObjectId
+  userId: z.custom<string>(zodObjectId),        // Another ObjectId
+  createdAt: z.date(),                          // Built-in date
+  lastModified: z.custom<Date>(zodStrictDate),  // Custom date validation
+  preferences: z.object({
+    accountCreated: z.date(),
+    lastLoginAt: z.date().optional()
+  }),
+  teamIds: z.array(z.custom<string>(zodObjectId)).optional() // Array of ObjectIds
+});
+
+// Convert with both ObjectId and custom date types
+const userProfileMongoSchema = zodSchema(UserProfileSchema, {
+  customTypes: { 
+    zodObjectId: 'objectId',
+    zodStrictDate: 'date'
+  }
+}).toMongoSchema();
+
+console.log('Schema with ObjectId and mixed Date types:');
+console.log(JSON.stringify(userProfileMongoSchema, null, 2));
+
+// Example 5: Usage with MongoDB (commented out - requires MongoDB connection)
 /*
 import { MongoClient } from 'mongodb';
 
@@ -82,9 +121,9 @@ async function setupWithMongoDB() {
   
   const db = client.db('example');
   
-  // Create collection with date validation
+  // Create collection with date validation - NOW EVEN SIMPLER!
   await db.createCollection('events', {
-    validator: { $jsonSchema: eventMongoSchema },
+    validator: { $jsonSchema: zodSchema(EventSchema).toMongoSchema() },
     validationAction: 'error'
   });
   

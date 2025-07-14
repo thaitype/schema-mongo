@@ -1,6 +1,7 @@
 import { MongoClient } from 'mongodb';
 import { z } from 'zod';
 import { convertJsonSchemaToMongoSchema } from '../src/index';
+import { zodSchema } from '../src/adapters/zod';
 
 /**
  * Example showing how to use the converted schemas with MongoDB collection validation
@@ -26,8 +27,8 @@ async function setupMongoValidation() {
     isActive: z.boolean().default(true)
   });
 
-  const userJsonSchema = z.toJSONSchema(UserSchema);
-  const userMongoSchema = convertJsonSchemaToMongoSchema(userJsonSchema);
+  // NEW: Using fluent API for cleaner code
+  const userMongoSchema = zodSchema(UserSchema).toMongoSchema();
 
   // Create collection with validation
   try {
@@ -142,6 +143,71 @@ async function setupMongoValidation() {
     console.log('❌ Invalid product was incorrectly accepted');
   } catch (error) {
     console.log('✅ Invalid product document correctly rejected:', error.message);
+  }
+
+  // Example 3: ObjectId Validation (NEW)
+  console.log('\n=== NEW: ObjectId and Date Validation Example ===');
+
+  // Define ObjectId validation function
+  function zodObjectId(value: any): boolean {
+    return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+  }
+
+  const TaskSchema = z.object({
+    _id: z.custom<string>(zodObjectId),
+    title: z.string().min(1),
+    assigneeId: z.custom<string>(zodObjectId),
+    createdAt: z.date(),
+    dueDate: z.date().optional(),
+    tags: z.array(z.custom<string>(zodObjectId)).optional(),
+    status: z.enum(['todo', 'in_progress', 'done'])
+  });
+
+  // Using fluent API with custom types - super clean!
+  const taskMongoSchema = zodSchema(TaskSchema, {
+    customTypes: { zodObjectId: 'objectId' }
+  }).toMongoSchema();
+
+  try {
+    await db.createCollection('tasks', {
+      validator: { $jsonSchema: taskMongoSchema },
+      validationAction: 'error'
+    });
+    console.log('✅ Tasks collection created with ObjectId validation');
+  } catch (error) {
+    console.log('Collection may already exist, continuing...');
+  }
+
+  const tasksCollection = db.collection('tasks');
+
+  // Test with valid ObjectId (you'd use actual ObjectId objects in real code)
+  try {
+    await tasksCollection.insertOne({
+      _id: new (require('mongodb')).ObjectId(),
+      title: 'Complete project',
+      assigneeId: new (require('mongodb')).ObjectId(),
+      createdAt: new Date(),
+      dueDate: new Date('2025-12-31'),
+      tags: [new (require('mongodb')).ObjectId()],
+      status: 'todo'
+    });
+    console.log('✅ Valid task with ObjectIds inserted successfully');
+  } catch (error) {
+    console.error('❌ Error inserting valid task:', error.message);
+  }
+
+  // Test with invalid ObjectId format
+  try {
+    await tasksCollection.insertOne({
+      _id: 'invalid-objectid-format',  // Invalid ObjectId
+      title: 'Invalid task',
+      assigneeId: new (require('mongodb')).ObjectId(),
+      createdAt: new Date(),
+      status: 'todo'
+    });
+    console.log('❌ Invalid task was incorrectly accepted');
+  } catch (error) {
+    console.log('✅ Invalid ObjectId correctly rejected:', error.message);
   }
 
   // Close connection

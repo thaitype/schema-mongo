@@ -4,10 +4,10 @@ This guide covers using `schema-mongo` with [Zod](https://zod.dev) schemas, incl
 
 ## 🎉 NEW: Date & ObjectId Support
 
-**schema-mongo** now includes a Zod adapter that enables full support for `z.date()` fields and custom MongoDB types like ObjectId! Use `zodToCompatibleJsonSchema()` to convert Zod schemas with dates and custom types directly to MongoDB-compatible schemas.
+**schema-mongo** now includes a Zod adapter that enables full support for `z.date()` fields and custom MongoDB types like ObjectId! Use the new fluent API `zodSchema()` for the cleanest experience, or the traditional `zodToCompatibleJsonSchema()` approach.
 
 ```typescript
-import { zodToCompatibleJsonSchema } from 'schema-mongo/adapters/zod';
+import { zodSchema } from 'schema-mongo/adapters/zod';
 
 // ObjectId validation function
 function zodObjectId(value: any): boolean {
@@ -19,10 +19,15 @@ const schema = z.object({
   createdAt: z.date()                  // ✅ Date support!
 });
 
-// Configure custom types
-const jsonSchema = zodToCompatibleJsonSchema(schema, {
+// ✨ NEW: Fluent API - one-liner to MongoDB schema
+const mongoSchema = zodSchema(schema, {
   customTypes: { zodObjectId: 'objectId' }
-});
+}).toMongoSchema();
+
+// Traditional approach (still supported)
+const jsonSchema = zodSchema(schema, {
+  customTypes: { zodObjectId: 'objectId' }
+}).toJsonSchema();
 ```
 
 ## Table of Contents
@@ -40,8 +45,7 @@ const jsonSchema = zodToCompatibleJsonSchema(schema, {
 
 ```typescript
 import { z } from 'zod';
-import { zodToCompatibleJsonSchema } from 'schema-mongo/adapters/zod';
-import { convertJsonSchemaToMongoSchema } from 'schema-mongo';
+import { zodSchema } from 'schema-mongo/adapters/zod';
 
 // 1. Define custom type validators (optional)
 function zodObjectId(value: any): boolean {
@@ -56,16 +60,24 @@ const UserSchema = z.object({
   age: z.number().int().min(0).optional()
 });
 
-// 3. Convert using the Zod adapter with custom types configuration
-const jsonSchema = zodToCompatibleJsonSchema(UserSchema, {
+// 3. ✨ NEW: Convert directly to MongoDB schema using fluent API
+const mongoSchema = zodSchema(UserSchema, {
   customTypes: { zodObjectId: 'objectId' }
-});
-const mongoSchema = convertJsonSchemaToMongoSchema(jsonSchema);
+}).toMongoSchema();
 
 // 4. Use with MongoDB collection validation
 await db.createCollection('users', {
   validator: { $jsonSchema: mongoSchema }
 });
+
+// Alternative: Traditional approach (still supported)
+import { zodToCompatibleJsonSchema } from 'schema-mongo/adapters/zod';
+import { convertJsonSchemaToMongoSchema } from 'schema-mongo';
+
+const jsonSchema = zodToCompatibleJsonSchema(UserSchema, {
+  customTypes: { zodObjectId: 'objectId' }
+});
+const mongoSchemaTraditional = convertJsonSchemaToMongoSchema(jsonSchema);
 ```
 
 ## Custom Types Support
@@ -76,7 +88,7 @@ MongoDB ObjectId fields are now fully supported using custom types configuration
 
 ```typescript
 import { z } from 'zod';
-import { zodToCompatibleJsonSchema } from 'schema-mongo/adapters/zod';
+import { zodSchema } from 'schema-mongo/adapters/zod';
 
 // 1. Define ObjectId validation function
 function zodObjectId(value: any): boolean {
@@ -93,13 +105,18 @@ const UserSchema = z.object({
   }))
 });
 
-// 3. Configure custom type mapping
-const jsonSchema = zodToCompatibleJsonSchema(UserSchema, {
+// 3. ✨ Convert directly to MongoDB schema using fluent API
+const mongoSchema = zodSchema(UserSchema, {
   customTypes: { zodObjectId: 'objectId' }
-});
+}).toMongoSchema();
 
 // Results in proper MongoDB ObjectId validation:
 // { _id: { bsonType: 'objectId' }, ... }
+
+// Alternative: Get JSON schema first
+const jsonSchema = zodSchema(UserSchema, {
+  customTypes: { zodObjectId: 'objectId' }
+}).toJsonSchema();
 ```
 
 ### ✅ Custom Date Types
@@ -118,9 +135,15 @@ const EventSchema = z.object({
   createdAt: z.date().optional()
 });
 
-const jsonSchema = zodToCompatibleJsonSchema(EventSchema, {
+// ✨ Convert directly to MongoDB schema
+const mongoSchema = zodSchema(EventSchema, {
   customTypes: { zodStrictDate: 'date' }
-});
+}).toMongoSchema();
+
+// Or get JSON schema first
+const jsonSchema = zodSchema(EventSchema, {
+  customTypes: { zodStrictDate: 'date' }
+}).toJsonSchema();
 ```
 
 ### ✅ Extensible MongoDB Types
@@ -144,12 +167,13 @@ const ProductSchema = z.object({
   metadata: z.record(z.unknown())
 });
 
-const jsonSchema = zodToCompatibleJsonSchema(ProductSchema, {
+// ✨ Fluent API for multiple custom types
+const mongoSchema = zodSchema(ProductSchema, {
   customTypes: {
     zodDecimal: 'decimal',
     zodBinary: 'binData'
   }
-});
+}).toMongoSchema();
 
 // Results in:
 // { price: { bsonType: 'decimal' }, thumbnail: { bsonType: 'binData' } }
@@ -157,7 +181,7 @@ const jsonSchema = zodToCompatibleJsonSchema(ProductSchema, {
 
 ### 🔧 Configuration API
 
-The `zodToCompatibleJsonSchema` function accepts an optional configuration object:
+Both `zodSchema()` and `zodToCompatibleJsonSchema()` accept an optional configuration object:
 
 ```typescript
 interface ZodToMongoOptions {
@@ -201,13 +225,18 @@ const objectIdValidator = (value: any): boolean => {
 Custom types are completely optional. Existing code continues to work:
 
 ```typescript
-// This still works without any changes
+// Both approaches work without any changes
 const schema = z.object({
   name: z.string(),
   createdAt: z.date()  // Built-in date support
 });
 
-const jsonSchema = zodToCompatibleJsonSchema(schema); // No options needed
+// ✨ NEW: Fluent API
+const mongoSchema = zodSchema(schema).toMongoSchema(); // No options needed
+const jsonSchema = zodSchema(schema).toJsonSchema();   // No options needed
+
+// Traditional approach (still supported)
+const jsonSchemaTraditional = zodToCompatibleJsonSchema(schema); // No options needed
 ```
 
 ## Supported Zod Features
@@ -450,17 +479,17 @@ The following JSON Schema keywords are automatically removed as they're not supp
 
 ## Best Practices
 
-### 1. Use the Zod Adapter for Date & ObjectId Support
+### 1. Use the Fluent API for Best DX
 
 ```typescript
-import { zodToCompatibleJsonSchema } from 'schema-mongo/adapters/zod';
+import { zodSchema } from 'schema-mongo/adapters/zod';
 
 // ObjectId validator
 function zodObjectId(value: any): boolean {
   return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
 }
 
-// ✅ Good - Use the adapter for date and ObjectId support
+// ✅ BEST - Use fluent API for cleanest code
 const UserSchema = z.object({
   _id: z.custom<string>(zodObjectId),  // Proper ObjectId validation
   email: z.string(),
@@ -468,13 +497,22 @@ const UserSchema = z.object({
   age: z.number().int().min(0).optional()
 });
 
+// One-liner to MongoDB schema
+const mongoSchema = zodSchema(UserSchema, {
+  customTypes: { zodObjectId: 'objectId' }
+}).toMongoSchema();
+
+// ✅ Good - Traditional approach for more control
+import { zodToCompatibleJsonSchema } from 'schema-mongo/adapters/zod';
+import { convertJsonSchemaToMongoSchema } from 'schema-mongo';
+
 const jsonSchema = zodToCompatibleJsonSchema(UserSchema, {
   customTypes: { zodObjectId: 'objectId' }
 });
-const mongoSchema = convertJsonSchemaToMongoSchema(jsonSchema);
+const mongoSchemaTraditional = convertJsonSchemaToMongoSchema(jsonSchema);
 
-// ❌ Avoid - Using native z.toJSONSchema() with dates
-const jsonSchema = z.toJSONSchema(UserSchema); // Will fail with z.date()
+// ❌ Avoid - Using native z.toJSONSchema() with dates or custom types
+const jsonSchema = z.toJSONSchema(UserSchema); // Will fail with z.date() or custom types
 ```
 
 ### 2. Use Named Functions for Custom Types
