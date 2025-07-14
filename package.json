@@ -4,7 +4,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "test": "bun test"
+    "test": "bun test",
+    "check-types": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/bun": "latest"
