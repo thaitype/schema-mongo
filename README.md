@@ -9,7 +9,7 @@ A framework-agnostic library for converting validation schemas to MongoDB-compat
 ## Features
 
 - **🏗️ Framework-Agnostic Core**: JSON Schema → MongoDB conversion engine
-- **🔌 Adapter Architecture**: Currently supports Zod (extensible to other validators)
+- **🔌 Adapter Architecture**: Currently supports Zod (v4) (extensible to other validators)
 - **🎯 Custom Types**: ObjectId, Date, Decimal, Binary, and extensible type system
 - **✨ Fluent API**: Clean, intuitive interface for common workflows
 - **🛡️ Type-Safe**: Full TypeScript support with comprehensive type definitions
