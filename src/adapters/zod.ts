@@ -94,7 +94,7 @@ function processZodType(
     };
   }
 
-  // Handle ZodCustom - check for configured custom types
+  // Handle ZodCustom - check for configured mongo types
   if (zodType_ === 'custom' && mongoTypes) {
     const customTypeName = findCustomTypeName(zodType, mongoTypes);
     if (customTypeName) {
@@ -275,7 +275,7 @@ function processZodType(
 
 /**
  * Attempts to find a custom type name by matching the Zod custom validator
- * against the configured custom types using object identity (for MongoTypeRegistry)
+ * against the configured mongo types using object identity (for MongoTypeRegistry)
  * or function name matching (for legacy Record<string, string>)
  */
 function findCustomTypeName(

@@ -1,12 +1,10 @@
 import { test, expect } from 'vitest';
 import { z } from 'zod';
 import { ObjectId } from 'mongodb';
-import { zodSchema } from 'schema-mongo/adapters/zod';
+import { zodSchema } from '../src/adapters/zod.js';
 
 // Custom ObjectId validator - cleaner pattern with named function
-const zodObjectId = z.custom<ObjectId | string>(function zodObjectId(value) {
-  return ObjectId.isValid(value);
-});
+const zodObjectId = z.custom<ObjectId | string>((value:any) => ObjectId.isValid(value));
 
 test('zodSchema().toJsonSchema() - basic functionality', () => {
   const UserSchema = z.object({
@@ -48,7 +46,7 @@ test('zodSchema().toMongoSchema() - basic functionality', () => {
   expect(result.required).toContain('createdAt');
 });
 
-test('zodSchema().toJsonSchema() - with custom types', () => {
+test('zodSchema().toJsonSchema() - with mongo types', () => {
   const UserSchema = z.object({
     _id: zodObjectId,
     name: z.string(),
@@ -69,7 +67,7 @@ test('zodSchema().toJsonSchema() - with custom types', () => {
   });
 });
 
-test('zodSchema().toMongoSchema() - with custom types', () => {
+test('zodSchema().toMongoSchema() - with mongo types', () => {
   const UserSchema = z.object({
     _id: zodObjectId,
     name: z.string(),
@@ -136,7 +134,7 @@ test('zodSchema().toMongoSchema() - complex nested schema', () => {
   expect(result.properties.profile.properties.contacts.items?.bsonType).toBe('object');
 });
 
-test('zodSchema().toJsonSchema() - without custom types configuration', () => {
+test('zodSchema().toJsonSchema() - without mongo types configuration', () => {
   const UserSchema = z.object({
     name: z.string(),
     age: z.number().int(),
@@ -150,7 +148,7 @@ test('zodSchema().toJsonSchema() - without custom types configuration', () => {
   expect(result.properties!.createdAt).toEqual({ type: 'string', __mongoType: 'date' });
 });
 
-test('zodSchema().toMongoSchema() - without custom types configuration', () => {
+test('zodSchema().toMongoSchema() - without mongo types configuration', () => {
   const UserSchema = z.object({
     name: z.string(),
     age: z.number().int(),
@@ -164,7 +162,7 @@ test('zodSchema().toMongoSchema() - without custom types configuration', () => {
   expect(result.properties.createdAt).toEqual({ bsonType: 'date' });
 });
 
-test('zodSchema() - multiple custom types', () => {
+test('zodSchema() - multiple mongo types', () => {
   function zodDecimal(value: any): boolean {
     return typeof value === 'string' && /^\d+\.\d+$/.test(value);
   }

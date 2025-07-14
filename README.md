@@ -32,7 +32,7 @@ const mongoTypes = new MongoTypeRegistry()
     bsonType: 'objectId'
   });
 
-// Create Zod schema with custom types
+// Create Zod schema with mongo types
 const UserSchema = z.object({
   _id: zodObjectId,
   name: z.string(),
@@ -77,7 +77,7 @@ const mongoSchema = zodSchema(zodSchema).toMongoSchema();
 
 ## Supported Validators
 
-- ✅ **Zod**: Full support via `zodSchema()` adapter with custom types
+- ✅ **Zod**: Full support via `zodSchema()` adapter with mongo types
 - 🔄 **Others**: Extensible architecture ready for additional validators
 
 ## Type Conversion
@@ -234,7 +234,7 @@ const AddressSchema = z.object({
   zipCode: z.string()
 });
 
-// Define custom types once
+// Define mongo types once
 const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
 const mongoTypes = new MongoTypeRegistry()
   .register('objectId', { schema: zodObjectId, bsonType: 'objectId' });

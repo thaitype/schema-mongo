@@ -267,7 +267,7 @@ import { MongoTypeRegistry } from 'schema-mongo';
 import { zodSchema } from 'schema-mongo/adapters/zod';
 
 async function userManagementExample() {
-  // 1. Define custom types
+  // 1. Define mongo types
   const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
   
   const mongoTypes = new MongoTypeRegistry()
@@ -345,7 +345,7 @@ async function userManagementExample() {
 ### E-commerce Product Schema
 
 ```typescript
-// Define custom types
+// Define mongo types
 const zodObjectId = z.custom<ObjectId | string>(value => ObjectId.isValid(value));
 const zodDecimal = z.custom<string>(value => /^\d+\.\d+$/.test(value));
 

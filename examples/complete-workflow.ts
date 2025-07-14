@@ -5,16 +5,16 @@ import { MongoTypeRegistry } from 'schema-mongo';
 import { zodSchema } from 'schema-mongo/adapters/zod';
 
 /**
- * Complete workflow example: Custom types → Schema → MongoDB validation → Data insertion
+ * Complete workflow example: Mongo types → Schema → MongoDB validation → Data insertion
  * 
- * This example demonstrates the full flow from declaring custom types using the 
+ * This example demonstrates the full flow from declaring mongo types using the 
  * clean MongoTypeRegistry pattern to successfully inserting validated data into MongoDB.
  */
 
 async function completeWorkflow() {
   console.log('🚀 Complete Workflow: Custom Types → MongoDB Validation');
 
-  // 1. Declare custom types using clean pattern
+  // 1. Declare mongo types using clean pattern
   console.log('\n1️⃣ Declaring custom ObjectId type...');
   const zodObjectId = z.custom<ObjectId | string>(value => 
     ObjectId.isValid(value as string | ObjectId)
@@ -28,8 +28,8 @@ async function completeWorkflow() {
       bsonType: 'objectId'
     });
 
-  // 3. Define Zod schema with custom types
-  console.log('3️⃣ Defining Zod schema with custom types...');
+  // 3. Define Zod schema with mongo types
+  console.log('3️⃣ Defining Zod schema with mongo types...');
   const UserSchema = z.object({
     _id: zodObjectId,
     name: z.string().min(2),

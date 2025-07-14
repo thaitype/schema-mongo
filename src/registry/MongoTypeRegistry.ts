@@ -62,7 +62,7 @@ export class MongoTypeRegistry<T extends MongoTypeInfo = MongoTypeInfo> {
   }
 
   /**
-   * Get all registered custom types as entries
+   * Get all registered mongo types as entries
    *
    * @returns Array of [name, typeInfo] tuples
    */
@@ -81,7 +81,7 @@ export class MongoTypeRegistry<T extends MongoTypeInfo = MongoTypeInfo> {
   }
 
   /**
-   * Get the number of registered custom types
+   * Get the number of registered mongo types
    *
    * @returns Number of registered types
    */
@@ -105,7 +105,7 @@ export class MongoTypeRegistry<T extends MongoTypeInfo = MongoTypeInfo> {
   }
 
   /**
-   * Clear all registered custom types
+   * Clear all registered mongo types
    */
   clear(): void {
     this._types.clear();
