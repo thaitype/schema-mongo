@@ -1,4 +1,4 @@
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import { z } from 'zod';
 import { convertJsonSchemaToMongoSchema } from '@thaitype/schema-mongo';
 import { zodSchema } from '@thaitype/schema-mongo/adapters/zod';
@@ -48,7 +48,7 @@ async function setupMongoValidation() {
   // Test valid document
   try {
     await usersCollection.insertOne({
-      _id: new (require('mongodb')).ObjectId(),
+      _id: new ObjectId(),
       email: 'john@example.com',
       name: 'John Doe',
       age: 30,
@@ -63,7 +63,7 @@ async function setupMongoValidation() {
   // Test invalid document (missing required field)
   try {
     await usersCollection.insertOne({
-      _id: new (require('mongodb')).ObjectId(),
+      _id: new ObjectId(),
       // missing email and name
       age: 25,
       createdAt: new Date().toISOString()
@@ -114,7 +114,7 @@ async function setupMongoValidation() {
   // Test valid product
   try {
     await productsCollection.insertOne({
-      _id: new (require('mongodb')).ObjectId(),
+      _id: new ObjectId(),
       name: 'Laptop',
       price: 999.99,
       category: {
@@ -132,7 +132,7 @@ async function setupMongoValidation() {
   // Test invalid product (missing required field)
   try {
     await productsCollection.insertOne({
-      _id: new (require('mongodb')).ObjectId(),
+      _id: new ObjectId(),
       name: 'Invalid Item',
       // missing required price and category
       inStock: true
@@ -180,12 +180,12 @@ async function setupMongoValidation() {
   // Test with valid ObjectId (you'd use actual ObjectId objects in real code)
   try {
     await tasksCollection.insertOne({
-      _id: new (require('mongodb')).ObjectId(),
+      _id: new ObjectId(),
       title: 'Complete project',
-      assigneeId: new (require('mongodb')).ObjectId(),
+      assigneeId: new ObjectId(),
       createdAt: new Date(),
       dueDate: new Date('2025-12-31'),
-      tags: [new (require('mongodb')).ObjectId()],
+      tags: [new ObjectId()],
       status: 'todo'
     });
     console.log('✅ Valid task with ObjectIds inserted successfully');
@@ -198,7 +198,7 @@ async function setupMongoValidation() {
     await tasksCollection.insertOne({
       _id: 'invalid-objectid-format',  // Invalid ObjectId (should stay as string for test)
       title: 'Invalid task',
-      assigneeId: new (require('mongodb')).ObjectId(),
+      assigneeId: new ObjectId(),
       createdAt: new Date(),
       status: 'todo'
     } as any);
