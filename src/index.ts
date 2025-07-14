@@ -57,7 +57,9 @@ const UNSUPPORTED_KEYWORDS = new Set([
   'description',
   'examples',
   '$schema',
-  'default'
+  'default',
+  'format', // MongoDB $jsonSchema doesn't support format validation
+  'additionalProperties' // Can cause issues with complex patterns
 ]);
 
 /**

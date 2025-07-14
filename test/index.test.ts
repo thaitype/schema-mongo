@@ -56,7 +56,9 @@ test('removes unsupported keywords', () => {
     description: 'This will be removed',
     examples: ['example'],
     $schema: 'http://json-schema.org/draft-04/schema#',
-    default: 'defaultValue'
+    default: 'defaultValue',
+    format: 'email',
+    additionalProperties: false
   };
   const result = convertJsonSchemaToMongoSchema(input);
   expect(result).toEqual({ bsonType: 'string' });
@@ -65,6 +67,8 @@ test('removes unsupported keywords', () => {
   expect(result).not.toHaveProperty('examples');
   expect(result).not.toHaveProperty('$schema');
   expect(result).not.toHaveProperty('default');
+  expect(result).not.toHaveProperty('format');
+  expect(result).not.toHaveProperty('additionalProperties');
 });
 
 test('preserves validation constraints', () => {
@@ -73,8 +77,7 @@ test('preserves validation constraints', () => {
     pattern: '^[0-9]+$',
     minimum: 0,
     maximum: 100,
-    enum: ['a', 'b', 'c'],
-    format: 'email'
+    enum: ['a', 'b', 'c']
   };
   const result = convertJsonSchemaToMongoSchema(input);
   expect(result).toEqual({
@@ -82,8 +85,7 @@ test('preserves validation constraints', () => {
     pattern: '^[0-9]+$',
     minimum: 0,
     maximum: 100,
-    enum: ['a', 'b', 'c'],
-    format: 'email'
+    enum: ['a', 'b', 'c']
   });
 });
 
@@ -110,7 +112,7 @@ test('converts nested object properties recursively', () => {
     properties: {
       name: { bsonType: 'string' },
       age: { bsonType: 'int', minimum: 0 },
-      email: { bsonType: 'string', format: 'email' }
+      email: { bsonType: 'string' } // format stripped
     }
   });
 });
@@ -181,8 +183,8 @@ test('handles oneOf composition', () => {
   const result = convertJsonSchemaToMongoSchema(input);
   expect(result).toEqual({
     oneOf: [
-      { bsonType: 'string', format: 'email' },
-      { bsonType: 'string', format: 'uri' }
+      { bsonType: 'string' }, // format stripped
+      { bsonType: 'string' }  // format stripped
     ]
   });
 });
@@ -231,8 +233,8 @@ test('complex nested schema from README example', () => {
     required: ['_id', 'email'],
     properties: {
       _id: { bsonType: 'string', pattern: '^[0-9a-fA-F]{24}$' },
-      email: { bsonType: 'string', format: 'email' },
-      age: { bsonType: 'int', minimum: 0 }
+      email: { bsonType: 'string' }, // format stripped
+      age: { bsonType: 'int', minimum: 0 } // default stripped
     }
   });
 });

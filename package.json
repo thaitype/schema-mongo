@@ -1,16 +1,36 @@
 {
   "name": "schema-mongo",
-  "module": "index.ts",
+  "version": "1.0.0",
+  "description": "Lightweight utility to convert JSON Schema to MongoDB $jsonSchema format",
+  "main": "src/index.ts",
+  "module": "src/index.ts",
   "type": "module",
-  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "keywords": ["mongodb", "json-schema", "validation", "schema", "conversion"],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
   "scripts": {
     "test": "bun test",
     "check-types": "tsc --noEmit"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "mongodb": "^6.17.0",
+    "mongodb-memory-server": "^10.1.4",
+    "zod": "^4.0.5"
   },
   "peerDependencies": {
     "typescript": "^5"
-  }
+  },
+  "files": [
+    "src/",
+    "README.md",
+    "CLAUDE.md"
+  ]
 }
