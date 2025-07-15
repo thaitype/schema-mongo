@@ -5,6 +5,7 @@
  */
 
 export * from './lib.js';
+export * from './types.js';
 
 /**
  * Export `zod` modules with module name `zod`

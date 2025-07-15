@@ -1,43 +1,7 @@
 import { z } from 'zod';
 import { convertJsonSchemaToMongoSchema } from '../lib.js';
 import { MongoTypeRegistry, type MongoTypeInfo } from '../registry/MongoTypeRegistry.js';
-
-/**
- * Extended JSON Schema that includes MongoDB-specific metadata
- */
-interface ExtendedJsonSchema {
-  type?: string | string[];
-  properties?: Record<string, ExtendedJsonSchema>;
-  items?: ExtendedJsonSchema;
-  allOf?: ExtendedJsonSchema[];
-  anyOf?: ExtendedJsonSchema[];
-  oneOf?: ExtendedJsonSchema[];
-  not?: ExtendedJsonSchema;
-  __mongoType?: 'date' | 'objectId' | string; // MongoDB-specific type hints
-  [key: string]: any;
-}
-
-/**
- * Configuration options for custom MongoDB type mapping
- */
-export interface ZodToMongoOptions {
-  mongoTypes?: MongoTypeRegistry;
-}
-
-/**
- * Result object from zodSchema function that provides fluent API methods
- */
-export interface ZodSchemaResult {
-  /**
-   * Returns the extended JSON Schema with MongoDB type hints
-   */
-  toJsonSchema(): ExtendedJsonSchema;
-
-  /**
-   * Returns the MongoDB-compatible schema by converting the JSON Schema
-   */
-  toMongoSchema(): Record<string, any>;
-}
+import type { ExtendedJsonSchema, SchemaMongoOptions, SchemaResult } from 'src/types.js';
 
 /**
  * Converts a Zod schema to a JSON Schema with MongoDB-compatible extensions.
@@ -49,7 +13,7 @@ export interface ZodSchemaResult {
  * @param options - Configuration options for custom type mapping
  * @returns Extended JSON Schema with MongoDB type hints
  */
-export function zodToCompatibleJsonSchema(zodSchema: z.ZodTypeAny, options?: ZodToMongoOptions): ExtendedJsonSchema {
+export function zodToCompatibleJsonSchema(zodSchema: z.ZodTypeAny, options?: SchemaMongoOptions): ExtendedJsonSchema {
   return processZodType(zodSchema, options?.mongoTypes);
 }
 
@@ -61,7 +25,7 @@ export function zodToCompatibleJsonSchema(zodSchema: z.ZodTypeAny, options?: Zod
  * @param options - Configuration options for custom type mapping
  * @returns Fluent API object with toJsonSchema() and toMongoSchema() methods
  */
-export function zodSchema(zodSchema: z.ZodTypeAny, options?: ZodToMongoOptions): ZodSchemaResult {
+export function zodSchema(zodSchema: z.ZodTypeAny, options?: SchemaMongoOptions): SchemaResult {
   return {
     toJsonSchema(): ExtendedJsonSchema {
       return zodToCompatibleJsonSchema(zodSchema, options);
