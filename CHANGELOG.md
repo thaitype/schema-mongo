@@ -1,5 +1,11 @@
 # schema-mongo
 
+## 0.3.0
+
+### Minor Changes
+
+- 441680e: Export more types for custom adapter
+
 ## 0.2.1
 
 ### Patch Changes
