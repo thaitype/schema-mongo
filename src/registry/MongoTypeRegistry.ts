@@ -7,7 +7,18 @@ export interface MongoTypeInfo<S extends StandardSchemaV1 = StandardSchemaV1> {
   /** The validator schema that implements StandardSchemaV1 */
   schema: S;
   /** The corresponding MongoDB BSON type */
-  bsonType: 'string' | 'objectId' | 'date' | 'binary' | 'decimal' | 'int' | 'long' | 'double' | 'boolean' | 'null' | (string & {}); // Allow any string for future extensions
+  bsonType:
+    | 'string'
+    | 'objectId'
+    | 'date'
+    | 'binary'
+    | 'decimal'
+    | 'int'
+    | 'long'
+    | 'double'
+    | 'boolean'
+    | 'null'
+    | (string & {}); // Allow any string for future extensions
   // Future extensions: doc, format, transformer, etc.
 }
 

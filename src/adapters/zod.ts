@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { convertJsonSchemaToMongoSchema } from '../lib.js';
-import { MongoTypeRegistry } from '../registry/MongoTypeRegistry.js';
+import { MongoTypeRegistry, type MongoTypeInfo } from '../registry/MongoTypeRegistry.js';
 
 /**
  * Extended JSON Schema that includes MongoDB-specific metadata
@@ -77,10 +77,7 @@ export function zodSchema(zodSchema: z.ZodTypeAny, options?: ZodToMongoOptions):
 /**
  * Recursively processes Zod types and converts them to extended JSON Schema
  */
-function processZodType(
-  zodType: z.ZodTypeAny,
-  mongoTypes?: MongoTypeRegistry
-): ExtendedJsonSchema {
+function processZodType(zodType: z.ZodTypeAny, mongoTypes?: MongoTypeRegistry): ExtendedJsonSchema {
   const def = zodType._def || (zodType as any).def;
   const zodType_ = def?.type;
 
@@ -275,10 +272,7 @@ function processZodType(
  * Attempts to find a custom type name by matching the Zod custom validator
  * against the configured mongo types using object identity
  */
-function findCustomTypeName(
-  zodType: z.ZodTypeAny,
-  mongoTypes: MongoTypeRegistry
-): string | undefined {
+function findCustomTypeName(zodType: z.ZodTypeAny, mongoTypes: MongoTypeRegistry): string | undefined {
   return mongoTypes.findByValidator(zodType);
 }
 
@@ -286,6 +280,6 @@ function findCustomTypeName(
  * Get the BSON type for a custom type name
  */
 function getBsonType(typeName: string, mongoTypes: MongoTypeRegistry): string | undefined {
-  const typeInfo = mongoTypes.get(typeName);
+  const typeInfo = (mongoTypes as { get: (name: string) => MongoTypeInfo }).get(typeName);
   return typeInfo?.bsonType;
 }
