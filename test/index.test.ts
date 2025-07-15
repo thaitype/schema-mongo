@@ -1,4 +1,4 @@
-import { test, expect } from 'vitest';
+import { test, expect, vi } from 'vitest';
 import { convertJsonSchemaToMongoSchema } from '../src/lib';
 
 test('converts basic string type to bsonType', () => {
@@ -237,4 +237,20 @@ test('complex nested schema from README example', () => {
       age: { bsonType: 'int', minimum: 0 } // default stripped
     }
   });
+});
+
+test('warns about invalid __mongoType that is not a string', () => {
+  const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  
+  const input = {
+    type: 'string',
+    __mongoType: 123  // Invalid: number instead of string
+  };
+  
+  const result = convertJsonSchemaToMongoSchema(input);
+  
+  expect(warnSpy).toHaveBeenCalledWith('Unknown __mongoType: 123');
+  expect(result).toEqual({ bsonType: 'string' }); // Falls back to regular type conversion
+  
+  warnSpy.mockRestore();
 });

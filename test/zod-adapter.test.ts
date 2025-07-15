@@ -206,3 +206,56 @@ test('handles regular Zod types without dates', () => {
   expect(mongoSchema.properties.isActive).toEqual({ bsonType: 'bool' });
   expect(mongoSchema.required).toEqual(['name', 'age', 'isActive']);
 });
+
+test('supports z.null() type', () => {
+  const schema = z.null();
+  const result = zodToCompatibleJsonSchema(schema);
+  expect(result).toEqual({ type: 'null' });
+});
+
+test('supports z.nullable() type', () => {
+  const schema = z.string().nullable();
+  const result = zodToCompatibleJsonSchema(schema);
+  expect(result).toEqual({
+    anyOf: [
+      { type: 'string' },
+      { type: 'null' }
+    ]
+  });
+});
+
+test('supports z.intersection() type', () => {
+  const BaseUser = z.object({ name: z.string() });
+  const UserWithEmail = z.object({ email: z.string() });
+  const schema = z.intersection(BaseUser, UserWithEmail);
+  
+  const result = zodToCompatibleJsonSchema(schema);
+  expect(result).toEqual({
+    allOf: [
+      {
+        type: 'object',
+        properties: { name: { type: 'string' } },
+        required: ['name']
+      },
+      {
+        type: 'object', 
+        properties: { email: { type: 'string' } },
+        required: ['email']
+      }
+    ]
+  });
+});
+
+test('handles integer detection via checks array (Zod v3 compatibility)', () => {
+  // Create a number schema and manually add checks to simulate Zod v3 behavior
+  const schema = z.number();
+  
+  // Manually add a check that simulates the integer check
+  const schemaWithChecks = schema as any;
+  schemaWithChecks._def.checks = [
+    { kind: 'int' }  // Simulate Zod v3 integer check
+  ];
+  
+  const result = zodToCompatibleJsonSchema(schemaWithChecks);
+  expect(result).toEqual({ type: 'integer' });
+});
