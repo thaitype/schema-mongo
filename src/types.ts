@@ -1,4 +1,4 @@
-import type { MongoTypeRegistry } from "./registry/MongoTypeRegistry.js";
+import type { MongoTypeRegistry } from './registry/MongoTypeRegistry.js';
 
 /**
  * Extended JSON Schema that includes MongoDB-specific metadata
@@ -21,7 +21,6 @@ export interface ExtendedJsonSchema {
 export interface SchemaMongoOptions {
   mongoTypes?: MongoTypeRegistry;
 }
-
 
 /**
  * Result object from schema function that provides fluent API methods
